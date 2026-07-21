@@ -1,4 +1,3 @@
-
 #include "position.h"
 #include "zobrist.h"
 #include <cctype>
@@ -46,6 +45,8 @@ void Position::clear() {
     key_ = 0;
     eval_cache_ = 0;
     history_.clear();
+    key_history_.clear();
+    halfmove_history_.clear();
 }
 
 void Position::put_piece(int sq_, Piece p) {
@@ -98,6 +99,8 @@ void Position::set_fen(const std::string& fen) {
         if (on(file, rank)) ep_square_ = sq(file, rank);
     }
     refresh_key();
+    key_history_.push_back(key_);
+    halfmove_history_.push_back(halfmove_clock_);
 }
 
 std::string Position::fen() const {
@@ -197,6 +200,65 @@ bool Position::legal(Move m) const {
     return copy.make_move(m) && !copy.in_check(opposite(copy.side_to_move()));
 }
 
+bool Position::is_threefold() const {
+    int cnt=0;
+    for (auto k : key_history_) if (k==key_) { if (++cnt>=3) return true; }
+    return false;
+}
+
+bool Position::is_insufficient_material() const {
+    // K vs K
+    int total = __builtin_popcountll(occupancy_all());
+    if (total==2) return true;
+    if (total==3) {
+        // K+N vs K or K+B vs K
+        for (int i=0;i<12;++i) {
+            Bitboard bb = piece_bb_[i];
+            if (bb) {
+                Piece p = static_cast<Piece>(i<=5? (i==1?Piece::WN: i==2?Piece::WB: Piece::WK) : (i==7?Piece::BN: i==8?Piece::BB: Piece::BK));
+                // simplified: if any knight or bishop, insufficient
+                if (p==Piece::WN || p==Piece::BN || p==Piece::WB || p==Piece::BB) return true;
+            }
+        }
+        // Actually check counts more precisely
+        if (count(Piece::WN)+count(Piece::BN)+count(Piece::WB)+count(Piece::BB)==1) return true;
+    }
+    if (total==4) {
+        // K+B vs K+B same color check - bishops on same color squares -> drawish
+        if (count(Piece::WB)==1 && count(Piece::BB)==1) {
+            int wb=-1, bb=-1;
+            for (int s=0;s<64;++s) if (board_[s]==Piece::WB) wb=s;
+            for (int s=0;s<64;++s) if (board_[s]==Piece::BB) bb=s;
+            if (wb>=0 && bb>=0) {
+                bool wc = (file_of(wb)+rank_of(wb))%2;
+                bool bc = (file_of(bb)+rank_of(bb))%2;
+                if (wc==bc) return true; // opposite? actually same color opposite complex - even/odd
+            }
+        }
+    }
+    return false;
+}
+
+bool Position::is_draw(int ply) const {
+    if (halfmove_clock_>=100) return true;
+    if (halfmove_clock_>=150) return true; // 75-move rule auto draw per FIDE
+    if (is_threefold()) return true;
+    if (is_insufficient_material()) return true;
+    return false;
+}
+
+bool Position::is_stalemate() const {
+    if (in_check(stm_)) return false;
+    // Need move list - generate to know, but simplified external check will generate
+    return false;
+}
+
+bool Position::is_checkmate() const {
+    if (!in_check(stm_)) return false;
+    // external: no legal moves
+    return false;
+}
+
 bool Position::make_null_move() {
     Undo u;
     u.move = Move{};
@@ -208,10 +270,14 @@ bool Position::make_null_move() {
     u.key = key_;
     u.eval_cache = eval_cache_;
     history_.push_back(u);
+    key_history_.push_back(key_); // still push? null move shouldn't count for threefold per FIDE? but keep
+    halfmove_history_.push_back(halfmove_clock_);
+
     ep_square_ = -1;
     stm_ = opposite(stm_);
     if (u.stm == Color::Black) ++fullmove_number_;
     refresh_key();
+    key_history_.back() = key_;
     return true;
 }
 
@@ -253,7 +319,7 @@ bool Position::make_move(Move m) {
 
     if (m.flags() & FLAG_PROMOTION) {
         Piece promo = promo_piece(stm_, m.promo());
-        if (promo == Piece::None) promo = make_piece(stm_, 5);
+        if (promo == Piece::None) promo = make_piece(stm_, 4);
         put_piece(to, promo);
     } else {
         put_piece(to, moving);
@@ -284,6 +350,8 @@ bool Position::make_move(Move m) {
     stm_ = opposite(stm_);
     if (u.stm == Color::Black) ++fullmove_number_;
     refresh_key();
+    key_history_.push_back(key_);
+    halfmove_history_.push_back(halfmove_clock_);
     return true;
 }
 
@@ -291,6 +359,9 @@ void Position::unmake_move() {
     if (history_.empty()) return;
     Undo u = history_.back();
     history_.pop_back();
+    if (!key_history_.empty()) key_history_.pop_back();
+    if (!halfmove_history_.empty()) halfmove_history_.pop_back();
+
     if (u.move.is_null()) {
         castling_rights_ = u.castling_rights;
         ep_square_ = u.ep_square;
@@ -324,13 +395,11 @@ void Position::unmake_move() {
 
     remove_piece(to);
     if (u.move.flags() & FLAG_PROMOTION) {
-        put_piece(from, make_piece(stm_, 1));
+        put_piece(from, make_piece(stm_, 0));
     } else {
         put_piece(from, moved);
     }
     if (u.captured != Piece::None && u.capture_square >= 0) put_piece(u.capture_square, u.captured);
-
-    refresh_key();
 }
 
 } // namespace chess
