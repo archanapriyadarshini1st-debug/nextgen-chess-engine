@@ -3,13 +3,15 @@
 
 A modular chess engine in modern C++ with Python tooling for self-play, training, benchmarking, and analytics.
 
-## What is in the repository now
-- Bitboard-friendly board representation
-- Legal move generation, castling, en passant, promotions
+## Built so far
+- Board representation and legal move generation
 - Zobrist hashing
-- Alpha-beta / negamax search with quiescence, aspiration windows, null move pruning, LMR, and TT
-- UCI interface and perft-style regression tests
-- Python scaffolding for self-play, datasets, training, and benchmarks
+- Alpha-beta / negamax search with quiescence, null move pruning, LMR, aspiration windows, and TT
+- UCI interface
+- Regression tests
+- Basic multi-threaded root search
+- Opening-book hook and Syzygy hook
+- Python scaffolding for logging, training, and benchmarking
 
 ## Build
 ```bash
@@ -23,17 +25,13 @@ ctest --test-dir build
 ./build/chess_engine
 ```
 
-Then send UCI commands such as:
-```text
-uci
-isready
-position startpos moves e2e4 e7e5
-go depth 4
-```
+## UCI options
+- `Hash`
+- `Threads`
 
-## Next upgrades
-- Better move ordering tables and transposition aging
-- Incremental NNUE feature accumulators
-- Syzygy probing
-- Multi-threaded search and time management refinements
-- Self-play dataset generation and network training
+## Next major work
+- True NNUE feature extractor and trainer
+- Real Syzygy probing via an external probe library
+- Stronger move ordering with SEE integration
+- Better endgame evaluation and draw detection
+- Stockfish/Lc0 tournament harness and SPRT loops

@@ -20,6 +20,8 @@ class Search {
 public:
     Search() = default;
     void set_hash_mb(std::size_t mb) { tt_.resize_mb(mb); }
+    void set_threads(unsigned n) { threads_ = n ? n : 1; }
+    unsigned threads() const { return threads_; }
     SearchResult think(Position& pos, const Limits& limits);
 
 private:
@@ -37,6 +39,7 @@ private:
     std::chrono::steady_clock::time_point start_;
     std::int64_t limit_ms_{0};
     std::uint64_t nodes_{0};
+    unsigned threads_{1};
 };
 
 } // namespace chess

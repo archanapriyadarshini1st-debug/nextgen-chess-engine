@@ -4,6 +4,8 @@
 #include "../evaluation/eval.h"
 #include <algorithm>
 #include <chrono>
+#include <future>
+#include <thread>
 
 namespace chess {
 namespace {
@@ -217,6 +219,8 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     Score previous = 0;
     Move best{};
     Score best_score = 0;
+    unsigned parallel_threads = std::max(1u, threads_);
+
     for (int depth = 1; depth <= max_depth; ++depth) {
         if (time_up()) break;
         bool accepted = false;
@@ -230,25 +234,52 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
             if (auto* tt = tt_.probe(pos.zobrist())) tt_move = tt->best;
             order_moves(pos, root, tt_move, 0);
 
-            Score local_best = -INF;
-            Move local_move{};
-            for (int i = 0; i < root.size; ++i) {
-                Move m = root.moves[i];
-                if (!pos.make_move(m)) continue;
-                Score score = -negamax(pos, depth - 1, -beta, -alpha, 1);
-                pos.unmake_move();
-                if (score > local_best) { local_best = score; local_move = m; }
-                if (score > alpha) alpha = score;
-                if (alpha >= beta) break;
-                if (time_up()) break;
-            }
+            if (parallel_threads > 1 && depth >= 4 && root.size >= 8) {
+                struct RootEval { Move move; Score score; };
+                std::vector<std::future<RootEval>> tasks;
+                tasks.reserve(root.size);
+                const int launch_depth = depth - 1;
+                for (int i = 0; i < root.size; ++i) {
+                    Move m = root.moves[i];
+                    tasks.emplace_back(std::async(std::launch::async, [this, pos, m, launch_depth]() mutable {
+                        Search local = *this;
+                        Position p = pos;
+                        if (!p.make_move(m)) return RootEval{m, -INF};
+                        Score sc = -local.negamax(p, launch_depth, -INF, INF, 1);
+                        return RootEval{m, sc};
+                    }));
+                }
+                Score local_best = -INF;
+                Move local_move{};
+                for (auto& fut : tasks) {
+                    auto ev = fut.get();
+                    if (ev.score > local_best) { local_best = ev.score; local_move = ev.move; }
+                }
+                best = local_move;
+                best_score = local_best;
+                previous = local_best;
+                accepted = true;
+            } else {
+                Score local_best = -INF;
+                Move local_move{};
+                for (int i = 0; i < root.size; ++i) {
+                    Move m = root.moves[i];
+                    if (!pos.make_move(m)) continue;
+                    Score score = -negamax(pos, depth - 1, -beta, -alpha, 1);
+                    pos.unmake_move();
+                    if (score > local_best) { local_best = score; local_move = m; }
+                    if (score > alpha) alpha = score;
+                    if (alpha >= beta) break;
+                    if (time_up()) break;
+                }
 
-            if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
-            if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
-            best = local_move;
-            best_score = local_best;
-            previous = local_best;
-            accepted = true;
+                if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
+                if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
+                best = local_move;
+                best_score = local_best;
+                previous = local_best;
+                accepted = true;
+            }
         }
         r.best_move = best;
         r.score = best_score;
