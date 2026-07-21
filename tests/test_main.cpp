@@ -6,8 +6,6 @@
 
 using namespace chess;
 
-extern uint64_t perft(Position& pos, int depth);
-
 void test_startpos() {
     Position pos;
     pos.set_startpos();
@@ -55,10 +53,6 @@ void test_draw_detection() {
 void test_threefold() {
     Position pos;
     pos.set_startpos();
-    // play Nf3 Nf6 Ng1 Ng8 three times to cause repetition
-    // Simplified: manually push same key 3 times
-    auto k = pos.zobrist();
-    // after 4 half moves we should have key repetition? Test key_history
     assert(!pos.is_threefold());
 }
 
