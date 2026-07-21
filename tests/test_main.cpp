@@ -20,15 +20,44 @@ std::uint64_t perft(Position& pos, int depth) {
     return nodes;
 }
 
-int main() {
+void test_startpos() {
     Position pos;
     pos.set_startpos();
     MoveList moves;
     generate_moves(pos, moves, false);
     assert(moves.size == 20);
+    assert(perft(pos, 1) == 20);
     assert(perft(pos, 2) == 400);
     assert(perft(pos, 3) == 8902);
-    std::cout << "basic engine tests passed
+    assert(perft(pos, 4) == 197281);
+}
+
+void test_fen_roundtrip() {
+    Position pos;
+    pos.set_fen("rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2");
+    auto fen = pos.fen();
+    Position copy;
+    copy.set_fen(fen);
+    assert(copy.fen() == fen);
+}
+
+void test_make_unmake_identity() {
+    Position pos;
+    pos.set_startpos();
+    const auto fen0 = pos.fen();
+    MoveList moves;
+    generate_moves(pos, moves, false);
+    assert(moves.size > 0);
+    assert(pos.make_move(moves.moves[0]));
+    pos.unmake_move();
+    assert(pos.fen() == fen0);
+}
+
+int main() {
+    test_startpos();
+    test_fen_roundtrip();
+    test_make_unmake_identity();
+    std::cout << "engine regression tests passed
 ";
     return 0;
 }
