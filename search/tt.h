@@ -1,7 +1,8 @@
-
 #pragma once
 #include "../core/position.h"
 #include <vector>
+#include <array>
+#include <cstdint>
 
 namespace chess {
 
@@ -13,19 +14,30 @@ struct TTEntry {
     Score score{0};
     int16_t depth{-1};
     TTFlag flag{TTFlag::Exact};
+    uint8_t gen{0};
+    int16_t eval{0};
+};
+
+struct TTCluster {
+    std::array<TTEntry, 4> entries{};
 };
 
 class TT {
 public:
     explicit TT(std::size_t mb = 16) { resize_mb(mb); }
     void resize_mb(std::size_t mb);
+    void clear();
+    void new_search();
     TTEntry* probe(Key key);
     const TTEntry* probe(Key key) const;
-    void store(Key key, int depth, Score score, TTFlag flag, Move best);
+    void store(Key key, int depth, Score score, TTFlag flag, Move best, Score eval, int ply);
+    void prefetch(Key key) const;
+    size_t hashfull() const;
 
 private:
-    std::vector<TTEntry> table_;
+    std::vector<TTCluster> table_;
     std::size_t mask_{0};
+    uint8_t generation_{0};
 };
 
 } // namespace chess
