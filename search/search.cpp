@@ -40,7 +40,20 @@ int piece_type_slot(Piece p) {
 }
 } // anon
 
+
+inline Score value_from_tt(Score v, int ply) {
+    if (v >= 30000-1000) return v - ply;
+    if (v <= -30000+1000) return v + ply;
+    return v;
+}
+inline Score value_to_tt(Score v, int ply) {
+    if (v >= 30000-1000) return v + ply;
+    if (v <= -30000+1000) return v - ply;
+    return v;
+}
+
 void Search::init_tables() {
+
     for(int d=1; d<64; ++d) for(int m=1; m<64; ++m){
         lmr_table_[d][m] = static_cast<int>(0.75 + std::log(d)*std::log(m)*0.35);
     }
@@ -155,7 +168,7 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
     Score tt_score = 0;
     if (ttEntry && ttEntry->key==pos.zobrist()) {
         tt_move = ttEntry->best;
-        tt_score = ttEntry->score;
+        tt_score = value_from_tt(ttEntry->score, ply);
         if (ttEntry->depth>=0) {
             if (ttEntry->flag==TTFlag::Exact) return tt_score;
             if (ttEntry->flag==TTFlag::Beta && tt_score>=beta) return tt_score;
@@ -217,7 +230,7 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
     if (tte && tte->key==pos.zobrist()) {
         tt_hit=true;
         tt_move=tte->best;
-        tt_score=tte->score;
+        tt_score=value_from_tt(tte->score, ply);
         tt_depth=tte->depth;
         tt_flag=tte->flag;
         if (ply>0 && tt_depth>=depth) {
@@ -276,22 +289,8 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
         if (auto* e2 = tt_.probe(pos.zobrist())) if (e2->key==pos.zobrist()) tt_move=e2->best;
     }
 
-    // ProbCut
-    if (!in_check && depth>=5 && std::abs(beta)<MATE_SCORE-100) {
-        int probBeta = beta + probcut_margin_[std::min(depth,15)];
-        MoveList captures;
-        generate_moves(pos, captures, true);
-        order_moves(pos, captures, tt_move, ply);
-        for (int i=0;i<captures.size;++i) {
-            Move m=captures.moves[i];
-            if (!see_ge(pos,m, probBeta - staticEval)) continue;
-            if (!pos.make_move(m)) continue;
-            Score score = -qsearch(pos, -probBeta, -probBeta+1, ply+1);
-            if (score>=probBeta) score = -negamax(pos, depth-4, -probBeta, -probBeta+1, ply+1, !cutNode);
-            pos.unmake_move();
-            if (score>=probBeta) return score;
-        }
-    }
+    // ProbCut - disabled for stability, re-enable with proper SEE and capture generation
+    // if (!in_check && depth>=5 && std::abs(beta)<MATE_SCORE-100) { ... }
 
     MoveList moves;
     generate_moves(pos, moves, false);
@@ -334,19 +333,10 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
         int extension=0;
         if (in_check) extension=1;
 
-        // Singular Extension: if TT move and depth>=6
-        if (ply>0 && tt_hit && m.raw==tt_move.raw && depth>=6 && std::abs(tt_score)<MATE_SCORE-100 && (tt_flag==TTFlag::Beta || tt_flag==TTFlag::Exact) && tt_depth>=depth-3) {
-            Score singularBeta = tt_score - 2*depth;
-            MoveList sub;
-            // we need to exclude tt_move - search with reduced window to see if all other moves fail low
-            // Simplified: do a shallow search with beta = singularBeta
-            // If no move reaches singularBeta, then extension
-            Position p2=pos;
-            // Actually we need to search position before move with excluded move - we will simulate by searching current pos with excluded logic? For simplicity, do a verification search of depth/2
-            Score v = -negamax(p2, depth/2 -1, -singularBeta, -singularBeta+1, ply+1, false);
-            if (v < singularBeta) extension=1;
-            else if (v >= singularBeta && tt_score < beta) extension=-1;
-        }
+        // Singular Extension - DISABLED for stability (would need excluded move search)
+        // if (ply>0 && tt_hit && m.raw==tt_move.raw && depth>=6 && std::abs(tt_score)<MATE_SCORE-100 && (tt_flag==TTFlag::Beta || tt_flag==TTFlag::Exact) && tt_depth>=depth-3) {
+        //    extension = 1;
+        // }
 
         int new_depth = depth -1 + extension;
         Score score;
@@ -403,10 +393,8 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
                     int sl = piece_slot(pos.board()[m.from()]);
                     if (sl>=0) capture_history_[static_cast<int>(pos.side_to_move())][sl%6][m.to()] += depth*depth;
                 }
-                // multi-cut counting
-                if (cutNode) {
-                    if (++multiCut>=2 && depth>=5) break;
-                } else break;
+                // beta cutoff
+                break;
             }
         }
     }
