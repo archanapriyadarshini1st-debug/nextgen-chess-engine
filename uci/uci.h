@@ -1,7 +1,8 @@
-
 #pragma once
 #include "../core/position.h"
 #include "../search/search.h"
+#include "../opening/book.h"
+#include "../nnue/nnue.h"
 #include <string>
 
 namespace chess {
@@ -16,6 +17,9 @@ public:
 private:
     Position pos_;
     Search search_;
+    OpeningBook book_;
+    NNUE nnue_;
+    bool use_book_{false};
 
     void handle_position(const std::string& line);
     void handle_go(const std::string& line);
