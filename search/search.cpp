@@ -219,12 +219,13 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     Score best_score = 0;
     for (int depth = 1; depth <= max_depth; ++depth) {
         if (time_up()) break;
-        Score window = depth >= 4 ? 50 : INF;
-        Score alpha0 = depth >= 4 ? previous - window : -INF;
-        Score beta0 = depth >= 4 ? previous + window : INF;
-        Score alpha = alpha0, beta = beta0;
         bool accepted = false;
+        std::int64_t window = depth >= 4 ? 50 : INF;
         while (!accepted) {
+            Score alpha0 = depth >= 4 ? previous - window : -INF;
+            Score beta0 = depth >= 4 ? previous + window : INF;
+            Score alpha = alpha0, beta = beta0;
+
             Move tt_move{};
             if (auto* tt = tt_.probe(pos.zobrist())) tt_move = tt->best;
             order_moves(pos, root, tt_move, 0);
@@ -242,8 +243,8 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                 if (time_up()) break;
             }
 
-            if (depth >= 4 && local_best <= alpha0) { previous = local_best; alpha = previous - window * 2; beta = previous + window; window *= 2; continue; }
-            if (depth >= 4 && local_best >= beta0) { previous = local_best; alpha = previous - window; beta = previous + window * 2; window *= 2; continue; }
+            if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
+            if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
             best = local_move;
             best_score = local_best;
             previous = local_best;
