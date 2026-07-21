@@ -1,4 +1,3 @@
-
 #pragma once
 #include "../core/position.h"
 #include "tt.h"
@@ -19,14 +18,15 @@ struct SearchResult {
 
 class Search {
 public:
-    Search() = default;
+    Search() { init_tables(); }
     void set_hash_mb(std::size_t mb) { tt_.resize_mb(mb); }
     void set_threads(unsigned n) { threads_ = n ? n : 1; }
     unsigned threads() const { return threads_; }
+    void clear() { tt_.clear(); for(auto& h: history_) for(auto& v: h) v=0; for(auto& k: killers_) for(auto& m: k) m=Move{}; }
     SearchResult think(Position& pos, const Limits& limits);
 
 private:
-    Score negamax(Position& pos, int depth, Score alpha, Score beta, int ply);
+    Score negamax(Position& pos, int depth, Score alpha, Score beta, int ply, bool cutNode);
     Score qsearch(Position& pos, Score alpha, Score beta, int ply);
     void order_moves(Position& pos, MoveList& moves, Move tt_move, int ply) const;
     int score_move(const Position& pos, Move m, Move tt_move, int ply) const;
@@ -35,15 +35,22 @@ private:
     static int piece_slot(Piece p);
     int complexity_score(const Position& pos) const;
     int adaptive_depth(const Position& pos, const Limits& limits) const;
+    void init_tables();
 
     TT tt_;
     std::array<std::array<int, 64>, 12> history_{};
     std::array<std::array<Move, 2>, MAX_PLY> killers_{};
+    std::array<std::array<std::array<int,64>, 12>, 2> capture_history_{};
+    std::array<std::array<std::array<int,64>,64>,12> cont_history_{};
     std::chrono::steady_clock::time_point start_;
     std::int64_t limit_ms_{0};
     std::uint64_t nodes_{0};
     unsigned threads_{1};
     int seldepth_{0};
+    int lmr_table_[64][64]{};
+    int futility_margin_[16]{};
+    int reverse_futility_margin_[16]{};
+    int probcut_margin_[16]{};
 };
 
 } // namespace chess
