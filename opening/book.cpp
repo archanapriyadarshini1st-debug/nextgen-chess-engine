@@ -1,5 +1,4 @@
+
 namespace chess {
-
-// Polyglot/opening book integration will be placed here.
-
-} // namespace chess
+// Opening book hooks will be wired here.
+}

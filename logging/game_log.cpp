@@ -1,5 +1,4 @@
+
 namespace chess {
-
-// Game logging will write move-level training records and analysis metadata.
-
-} // namespace chess
+// Game logging hooks will write move-level training records and outcomes.
+}
