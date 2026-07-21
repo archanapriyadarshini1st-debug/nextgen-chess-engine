@@ -7,11 +7,16 @@ A modular chess engine in modern C++ with Python tooling for self-play, training
 - Board representation and legal move generation
 - Zobrist hashing
 - Alpha-beta / negamax search with quiescence, null move pruning, LMR, aspiration windows, and TT
+- Adaptive depth selection and selective depth reporting
 - UCI interface
 - Regression tests
 - Basic multi-threaded root search
 - Opening-book hook and Syzygy hook
 - Python scaffolding for logging, training, and benchmarking
+
+## Adaptive depth behavior
+The engine now adjusts its search target based on position complexity and available time.
+Quiet positions stay lighter, tactical positions go deeper, and `seldepth` reports how far the engine actually reached in sharp lines.
 
 ## Build
 ```bash
@@ -31,7 +36,7 @@ ctest --test-dir build
 
 ## Next major work
 - True NNUE feature extractor and trainer
-- Real Syzygy probing via an external probe library
+- Real Syzygy probing via an external tablebase library
 - Stronger move ordering with SEE integration
-- Better endgame evaluation and draw detection
+- Better endgame evaluation and draw handling
 - Stockfish/Lc0 tournament harness and SPRT loops

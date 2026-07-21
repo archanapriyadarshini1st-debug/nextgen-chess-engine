@@ -45,6 +45,46 @@ bool Search::time_up() const {
     return elapsed >= limit_ms_;
 }
 
+int Search::complexity_score(const Position& pos) const {
+    MoveList moves;
+    Position copy = pos;
+    generate_moves(copy, moves, false);
+    int material = 0;
+    int pawns = 0;
+    const auto& b = pos.board();
+    for (int sq = 0; sq < 64; ++sq) {
+        Piece p = b[sq];
+        if (p == Piece::None) continue;
+        material += piece_value(p);
+        if (p == Piece::WP || p == Piece::BP) ++pawns;
+    }
+    int in_check = pos.in_check(pos.side_to_move()) ? 40 : 0;
+    int mobility = std::min(40, moves.size * 2);
+    int endgame = material < 2400 ? 25 : 0;
+    int pawnless = pawns <= 6 ? 20 : 0;
+    return in_check + mobility + endgame + pawnless;
+}
+
+int Search::adaptive_depth(const Position& pos, const Limits& limits) const {
+    if (limits.depth > 0) return limits.depth;
+    int c = complexity_score(pos);
+    int base = 18;
+    if (c < 35) base = 18;
+    else if (c < 60) base = 22;
+    else if (c < 85) base = 26;
+    else if (c < 110) base = 30;
+    else base = 34;
+
+    if (limit_ms_ > 0) {
+        if (limit_ms_ < 1000) base = std::min(base, 18);
+        else if (limit_ms_ < 3000) base = std::min(base, 22);
+        else if (limit_ms_ < 8000) base = std::min(base, 26);
+        else base = std::min(base, 30);
+    }
+
+    return std::clamp(base, 12, 40);
+}
+
 int Search::score_move(const Position& pos, Move m, Move tt_move, int ply) const {
     if (m.raw == tt_move.raw) return 1'000'000;
     const auto& b = pos.board();
@@ -78,6 +118,7 @@ void Search::order_moves(Position& pos, MoveList& moves, Move tt_move, int ply) 
 }
 
 Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
+    seldepth_ = std::max(seldepth_, ply);
     ++nodes_;
     if (time_up()) return evaluate(pos);
     if (ply >= MAX_PLY - 1) return evaluate(pos);
@@ -108,6 +149,7 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
 }
 
 Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply) {
+    seldepth_ = std::max(seldepth_, ply);
     ++nodes_;
     if (time_up()) return evaluate(pos);
     if (depth <= 0) return qsearch(pos, alpha, beta, ply);
@@ -196,6 +238,7 @@ std::vector<Move> Search::extract_pv(Position pos, int depth) const {
 SearchResult Search::think(Position& pos, const Limits& limits) {
     SearchResult r;
     nodes_ = 0;
+    seldepth_ = 0;
     start_ = std::chrono::steady_clock::now();
     if (limits.movetime_ms > 0) limit_ms_ = limits.movetime_ms;
     else if (limits.infinite) limit_ms_ = 0;
@@ -206,13 +249,14 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
         else limit_ms_ = 0;
     }
 
-    int max_depth = limits.depth > 0 ? limits.depth : 6;
+    int max_depth = adaptive_depth(pos, limits);
     MoveList root;
     generate_moves(pos, root, false);
     if (root.size == 0) {
         r.best_move = Move{};
         r.score = pos.in_check(pos.side_to_move()) ? -MATE_SCORE : 0;
         r.nodes = nodes_;
+        r.seldepth = seldepth_;
         return r;
     }
 
@@ -234,8 +278,8 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
             if (auto* tt = tt_.probe(pos.zobrist())) tt_move = tt->best;
             order_moves(pos, root, tt_move, 0);
 
-            if (parallel_threads > 1 && depth >= 4 && root.size >= 8) {
-                struct RootEval { Move move; Score score; };
+            if (parallel_threads > 1 and depth >= 4 and root.size >= 8) {
+                struct RootEval { Move move; Score score; int seldepth; };
                 std::vector<std::future<RootEval>> tasks;
                 tasks.reserve(root.size);
                 const int launch_depth = depth - 1;
@@ -244,20 +288,23 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                     tasks.emplace_back(std::async(std::launch::async, [this, pos, m, launch_depth]() mutable {
                         Search local = *this;
                         Position p = pos;
-                        if (!p.make_move(m)) return RootEval{m, -INF};
+                        if (!p.make_move(m)) return RootEval{m, -INF, 0};
                         Score sc = -local.negamax(p, launch_depth, -INF, INF, 1);
-                        return RootEval{m, sc};
+                        return RootEval{m, sc, local.seldepth_};
                     }));
                 }
                 Score local_best = -INF;
                 Move local_move{};
+                int local_seldepth = 0;
                 for (auto& fut : tasks) {
                     auto ev = fut.get();
                     if (ev.score > local_best) { local_best = ev.score; local_move = ev.move; }
+                    local_seldepth = std::max(local_seldepth, ev.seldepth);
                 }
                 best = local_move;
                 best_score = local_best;
                 previous = local_best;
+                seldepth_ = std::max(seldepth_, local_seldepth);
                 accepted = true;
             } else {
                 Score local_best = -INF;
@@ -288,6 +335,7 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     }
 
     r.nodes = nodes_;
+    r.seldepth = std::max(seldepth_, r.depth);
     r.pv = extract_pv(pos, r.depth);
     return r;
 }

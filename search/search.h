@@ -13,6 +13,7 @@ struct SearchResult {
     Score score{0};
     std::vector<Move> pv;
     int depth{0};
+    int seldepth{0};
     std::uint64_t nodes{0};
 };
 
@@ -32,6 +33,8 @@ private:
     std::vector<Move> extract_pv(Position pos, int depth) const;
     bool time_up() const;
     static int piece_slot(Piece p);
+    int complexity_score(const Position& pos) const;
+    int adaptive_depth(const Position& pos, const Limits& limits) const;
 
     TT tt_;
     std::array<std::array<int, 64>, 12> history_{};
@@ -40,6 +43,7 @@ private:
     std::int64_t limit_ms_{0};
     std::uint64_t nodes_{0};
     unsigned threads_{1};
+    int seldepth_{0};
 };
 
 } // namespace chess
