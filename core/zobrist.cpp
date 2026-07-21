@@ -1,4 +1,3 @@
-
 #include "zobrist.h"
 #include "position.h"
 #include <array>
