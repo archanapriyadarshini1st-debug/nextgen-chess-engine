@@ -25,10 +25,10 @@ Piece char_piece(char c) {
 }
 Piece promo_piece(Color c, std::uint32_t promo) {
     switch (promo) {
-        case 1: return make_piece(c, 2);
-        case 2: return make_piece(c, 3);
-        case 3: return make_piece(c, 4);
-        case 4: return make_piece(c, 5);
+        case 1: return c == Color::White ? Piece::WN : Piece::BN;
+        case 2: return c == Color::White ? Piece::WB : Piece::BB;
+        case 3: return c == Color::White ? Piece::WR : Piece::BR;
+        case 4: return c == Color::White ? Piece::WQ : Piece::BQ;
         default: return Piece::None;
     }
 }
@@ -68,9 +68,6 @@ void Position::remove_piece(int sq_) {
 void Position::refresh_key() { key_ = zobrist::compute(*this); }
 
 void Position::set_startpos() {
-    set_fen("rn1qkbnr/pppbpppp/8/3p4/8/5NP1/PPPPPPBP/RNBQK2R w KQkq - 0 1");
-    // The line above is a placeholder only if someone wants a concrete position.
-    // Immediately reset to the actual chess starting position below.
     set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
@@ -109,9 +106,8 @@ std::string Position::fen() const {
         int empty = 0;
         for (int f = 0; f < 8; ++f) {
             Piece p = board_[sq(f, r)];
-            if (p == Piece::None) {
-                ++empty;
-            } else {
+            if (p == Piece::None) ++empty;
+            else {
                 if (empty) { out << empty; empty = 0; }
                 out << piece_char(p);
             }
@@ -257,7 +253,7 @@ bool Position::make_move(Move m) {
 
     if (m.flags() & FLAG_PROMOTION) {
         Piece promo = promo_piece(stm_, m.promo());
-        if (promo == Piece::None) promo = make_piece(stm_, 4);
+        if (promo == Piece::None) promo = make_piece(stm_, 5);
         put_piece(to, promo);
     } else {
         put_piece(to, moving);
@@ -308,6 +304,8 @@ void Position::unmake_move() {
 
     const int from = u.move.from();
     const int to = u.move.to();
+    Piece moved = board_[to];
+
     stm_ = u.stm;
     castling_rights_ = u.castling_rights;
     ep_square_ = u.ep_square;
@@ -328,7 +326,7 @@ void Position::unmake_move() {
     if (u.move.flags() & FLAG_PROMOTION) {
         put_piece(from, make_piece(stm_, 1));
     } else {
-        put_piece(from, board_[to]);
+        put_piece(from, moved);
     }
     if (u.captured != Piece::None && u.capture_square >= 0) put_piece(u.capture_square, u.captured);
 

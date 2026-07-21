@@ -1,5 +1,6 @@
 
 #include "tt.h"
+#include <algorithm>
 #include <bit>
 
 namespace chess {

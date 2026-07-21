@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.20)
 project(nextgen_chess_engine LANGUAGES CXX)
 
@@ -34,7 +35,7 @@ target_link_libraries(chess_engine PRIVATE chesscore)
 
 if(BUILD_TESTS)
   enable_testing()
-  add_executable(engine_tests tests/perft_tests.cpp tests/movegen_tests.cpp tests/zobrist_tests.cpp)
+  add_executable(engine_tests tests/test_main.cpp)
   target_link_libraries(engine_tests PRIVATE chesscore)
   add_test(NAME engine_tests COMMAND engine_tests)
 endif()

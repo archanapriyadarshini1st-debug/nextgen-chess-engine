@@ -1,35 +1,39 @@
+
 # NextGen Chess Engine
 
-A modular chess engine foundation in modern C++ with Python tooling for self-play, training, benchmarking, and analytics.
+A modular chess engine in modern C++ with Python tooling for self-play, training, benchmarking, and analytics.
 
-## Goals
-- UCI-compatible engine core
-- Bitboard-based move generation
-- Iterative deepening alpha-beta search
-- NNUE-ready evaluation pipeline
-- Self-play and training tooling in Python
-- Benchmarking, tuning, and logging infrastructure
-
-## Layout
-- `core/` fundamental chess types, board representation, move generation, hashing
-- `search/` iterative deepening, pruning, move ordering, transposition table
-- `evaluation/` classical and endgame evaluation helpers
-- `nnue/` incremental neural evaluation interfaces
-- `uci/` protocol loop and options
-- `tests/` perft and correctness tests
-- `tools/` Python training, dataset, and benchmark scripts
-- `training/` model training and orchestration
+## What is in the repository now
+- Bitboard-friendly board representation
+- Legal move generation, castling, en passant, promotions
+- Zobrist hashing
+- Alpha-beta / negamax search with quiescence, aspiration windows, null move pruning, LMR, and TT
+- UCI interface and perft-style regression tests
+- Python scaffolding for self-play, datasets, training, and benchmarks
 
 ## Build
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+ctest --test-dir build
 ```
 
-## Roadmap
-1. Legal move generation and perft validation
-2. UCI shell and time management
-3. Transposition table + search heuristics
-4. NNUE integration
-5. Self-play logging and training pipeline
-6. Automated regression testing and benchmarking
+## Run
+```bash
+./build/chess_engine
+```
+
+Then send UCI commands such as:
+```text
+uci
+isready
+position startpos moves e2e4 e7e5
+go depth 4
+```
+
+## Next upgrades
+- Better move ordering tables and transposition aging
+- Incremental NNUE feature accumulators
+- Syzygy probing
+- Multi-threaded search and time management refinements
+- Self-play dataset generation and network training

@@ -4,7 +4,6 @@
 #include "../evaluation/eval.h"
 #include <algorithm>
 #include <chrono>
-#include <limits>
 
 namespace chess {
 namespace {
@@ -15,6 +14,15 @@ int piece_value(Piece p) {
         case Piece::WB: case Piece::BB: return 330;
         case Piece::WR: case Piece::BR: return 500;
         case Piece::WQ: case Piece::BQ: return 900;
+        default: return 0;
+    }
+}
+int promo_bonus(std::uint32_t promo) {
+    switch (promo) {
+        case 1: return 320;
+        case 2: return 330;
+        case 3: return 500;
+        case 4: return 900;
         default: return 0;
     }
 }
@@ -43,7 +51,7 @@ int Search::score_move(const Position& pos, Move m, Move tt_move, int ply) const
     int s = 0;
     if (m.flags() & FLAG_CAPTURE) {
         Piece victim = to;
-        if ((m.flags() & FLAG_EN_PASSANT) && pos.ep_square() >= 0) victim = pos.side_to_move() == Color::White ? Piece::BP : Piece::WP;
+        if ((m.flags() & FLAG_EN_PASSANT)) victim = pos.side_to_move() == Color::White ? Piece::BP : Piece::WP;
         s += 100000 + piece_value(victim) - piece_value(from);
     } else {
         int slot = piece_slot(from);
@@ -51,7 +59,7 @@ int Search::score_move(const Position& pos, Move m, Move tt_move, int ply) const
         if (killers_[ply][0].raw == m.raw) s += 90000;
         else if (killers_[ply][1].raw == m.raw) s += 85000;
     }
-    if (m.flags() & FLAG_PROMOTION) s += 80000 + piece_value(make_piece(pos.side_to_move(), m.promo()));
+    if (m.flags() & FLAG_PROMOTION) s += 80000 + promo_bonus(m.promo());
     return s;
 }
 
@@ -81,8 +89,7 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
     else generate_moves(pos, moves, true);
 
     Move tt_move{};
-    auto* tt = tt_.probe(pos.zobrist());
-    if (tt) tt_move = tt->best;
+    if (auto* tt = tt_.probe(pos.zobrist())) tt_move = tt->best;
     order_moves(pos, moves, tt_move, ply);
 
     for (int i = 0; i < moves.size; ++i) {
@@ -121,16 +128,14 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
 
     MoveList moves;
     generate_moves(pos, moves, false);
-    if (moves.size == 0) {
-        return in_check ? -MATE_SCORE + ply : 0;
-    }
+    if (moves.size == 0) return in_check ? -MATE_SCORE + ply : 0;
 
     Move tt_move{};
-    auto* tt = tt_.probe(pos.zobrist());
-    if (tt) tt_move = tt->best;
+    if (auto* tt = tt_.probe(pos.zobrist())) tt_move = tt->best;
     order_moves(pos, moves, tt_move, ply);
 
     Score alpha0 = alpha;
+    Score beta0 = beta;
     Move best{};
     Score best_score = -INF;
 
@@ -169,7 +174,7 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
 
     TTFlag flag = TTFlag::Exact;
     if (best_score <= alpha0) flag = TTFlag::Alpha;
-    else if (best_score >= beta) flag = TTFlag::Beta;
+    else if (best_score >= beta0) flag = TTFlag::Beta;
     tt_.store(pos.zobrist(), depth, best_score, flag, best);
     return best_score;
 }
@@ -215,8 +220,9 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     for (int depth = 1; depth <= max_depth; ++depth) {
         if (time_up()) break;
         Score window = depth >= 4 ? 50 : INF;
-        Score alpha = depth >= 4 ? previous - window : -INF;
-        Score beta = depth >= 4 ? previous + window : INF;
+        Score alpha0 = depth >= 4 ? previous - window : -INF;
+        Score beta0 = depth >= 4 ? previous + window : INF;
+        Score alpha = alpha0, beta = beta0;
         bool accepted = false;
         while (!accepted) {
             Move tt_move{};
@@ -236,8 +242,8 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                 if (time_up()) break;
             }
 
-            if (depth >= 4 && local_best <= alpha) { alpha = previous - window * 2; beta = previous + window; window *= 2; continue; }
-            if (depth >= 4 && local_best >= beta) { alpha = previous - window; beta = previous + window * 2; window *= 2; continue; }
+            if (depth >= 4 && local_best <= alpha0) { previous = local_best; alpha = previous - window * 2; beta = previous + window; window *= 2; continue; }
+            if (depth >= 4 && local_best >= beta0) { previous = local_best; alpha = previous - window; beta = previous + window * 2; window *= 2; continue; }
             best = local_move;
             best_score = local_best;
             previous = local_best;
