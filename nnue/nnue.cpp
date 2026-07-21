@@ -64,7 +64,7 @@ bool NNUE::load(const std::string& path) {
 void NNUE::refresh_accumulator(const Position& pos, Accumulator& acc, Color perspective) const {
     if (!loaded_) { acc.white.fill(0); acc.black.fill(0); return; }
     std::array<int16_t, NNUE_HT1> &target = (perspective==Color::White? acc.white : acc.black);
-    target = feature_bias_; // start with bias
+    for(int i=0;i<NNUE_HT1;++i) target[i] = (i < (int)feature_bias_.size()? feature_bias_[i]:0); // start with bias
     int kingSq = pos.king_square(perspective);
     if (kingSq<0) return;
     const auto& board = pos.board();
