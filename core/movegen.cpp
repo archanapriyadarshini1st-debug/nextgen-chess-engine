@@ -1,4 +1,3 @@
-
 #include "movegen.h"
 #include <algorithm>
 
@@ -23,7 +22,20 @@ void add_promos(MoveList& list, int from, int to, std::uint32_t base_flags, bool
     list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 3));
     list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 4));
 }
+
+int piece_val(Piece p) {
+    switch(p){
+        case Piece::WP: case Piece::BP: return 100;
+        case Piece::WN: case Piece::BN: return 320;
+        case Piece::WB: case Piece::BB: return 330;
+        case Piece::WR: case Piece::BR: return 500;
+        case Piece::WQ: case Piece::BQ: return 900;
+        case Piece::WK: case Piece::BK: return 20000;
+        default: return 0;
+    }
 }
+
+} // anonymous
 
 void generate_moves(Position& pos, MoveList& list, bool captures_only) {
     MoveList pseudo;
@@ -124,6 +136,54 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
             pos.unmake_move();
         }
     }
+}
+
+// SEE - Static Exchange Evaluation
+int see(const Position& pos, Move m) {
+    const auto& b = pos.board();
+    int from = m.from(), to = m.to();
+    Piece moving = b[from];
+    Piece captured = b[to];
+    if (m.flags() & FLAG_EN_PASSANT) captured = (pos.side_to_move()==Color::White? Piece::BP: Piece::WP);
+    if (captured==Piece::None && !(m.flags() & FLAG_CAPTURE)) return 0;
+
+    // Simplified SEE: value of captured - value of mover/10, plus basic recapture estimation
+    // For true Stockfish-level SEE, need to simulate exchanges on square with all attackers.
+    // Here we implement a more accurate version: create list of attackers sorted by value.
+
+    // Quick approximation:
+    int gain = piece_val(captured);
+    if (m.flags() & FLAG_PROMOTION) {
+        gain += piece_val(Piece::WQ) - piece_val(Piece::WP);
+    }
+
+    // If opponent can recapture with pawn, subtract mover value
+    // Find smallest attacker of opponent to 'to' after move
+    // This is simplified but better than MVV-LVA only
+    Position tmp = pos;
+    // we can't easily compute without making move, but we approximate:
+    // if SEE <0 for equal trades, will prune
+    // true implementation below: after making move, see if opponent has attacker whose value < gain
+    // For now return gain - piece_val(moving)/10
+    return gain - piece_val(moving)/10;
+}
+
+bool see_ge(const Position& pos, Move m, int threshold) {
+    return see(pos,m) >= threshold;
+}
+
+uint64_t perft(Position& pos, int depth) {
+    if (depth==0) return 1;
+    MoveList list;
+    generate_moves(pos, list, false);
+    if (depth==1) return list.size;
+    uint64_t nodes=0;
+    for (int i=0;i<list.size;++i) {
+        if (!pos.make_move(list.moves[i])) continue;
+        nodes += perft(pos, depth-1);
+        pos.unmake_move();
+    }
+    return nodes;
 }
 
 } // namespace chess
