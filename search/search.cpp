@@ -169,7 +169,8 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
     if (ttEntry && ttEntry->key==pos.zobrist()) {
         tt_move = ttEntry->best;
         tt_score = value_from_tt(ttEntry->score, ply);
-        if (ttEntry->depth>=0) {
+        bool isMate = std::abs(tt_score) >= 10000;
+        if (ttEntry->depth>=0 && !isMate) {
             if (ttEntry->flag==TTFlag::Exact) return tt_score;
             if (ttEntry->flag==TTFlag::Beta && tt_score>=beta) return tt_score;
             if (ttEntry->flag==TTFlag::Alpha && tt_score<=alpha) return tt_score;
@@ -233,10 +234,16 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
         tt_score=value_from_tt(tte->score, ply);
         tt_depth=tte->depth;
         tt_flag=tte->flag;
-        if (ply>0 && tt_depth>=depth) {
+        // Don't use mate scores from TT for cutoff unless it's exact and deep enough, to avoid false mate propagation
+        bool isMateScore = std::abs(tt_score) >= 10000;
+        if (ply>0 && tt_depth>=depth && !isMateScore) {
             if (tt_flag==TTFlag::Exact) return tt_score;
             if (tt_flag==TTFlag::Beta && tt_score>=beta) return tt_score;
             if (tt_flag==TTFlag::Alpha && tt_score<=alpha) return tt_score;
+        }
+        // For mate scores, only use if exact and not too shallow
+        if (ply>0 && isMateScore && tt_flag==TTFlag::Exact && tt_depth>=depth) {
+            return tt_score;
         }
     }
 
@@ -399,7 +406,17 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
         }
     }
 
-    if (movesTried==0) return in_check ? -MATE_SCORE + ply : 0;
+    if (movesTried==0) {
+        // No legal moves
+        if (in_check) return -MATE_SCORE + ply;
+        else return 0;
+    }
+
+    // Clamp best_score to avoid fake mate from eval explosion
+    if (std::abs(best_score) >= 20000) {
+        // If not true mate, clamp
+        if (std::abs(best_score) < MATE_SCORE-500) best_score = std::clamp(best_score, -10000, 10000);
+    }
 
     TTFlag flag = TTFlag::Exact;
     if (best_score <= alpha0) flag = TTFlag::Alpha;
