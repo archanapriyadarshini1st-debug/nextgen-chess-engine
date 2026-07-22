@@ -1,25 +1,28 @@
 # Networks
 
-- `nnue.nnue` - current best network (HalfKP 41024x256x32x1, 21MB, trained on 30k selfplay positions, loss 0.87 -> 0.10)
+- `nnue.nnue` - current best network (HalfKP 41024x256x32x1, 21MB, trained on 7M pos, loss 0.00009, distilled from Stockfish 18)
+- `nnue.nnue.gz` - gzipped version (4.4MB) - workaround for GitHub 413
+- `chunks/nnue.nnue.part.*` - 21x 1MB chunks of nnue.nnue (pushed via API workaround for 413 Request Entity Too Large)
+- `reassemble.sh` - rebuild: `bash networks/reassemble.sh` or `cat networks/chunks/nnue.nnue.part.* > networks/nnue.nnue`
 - `current/` champion model (future)
-- `candidates/` new checkpoints under evaluation
-- `archive/` older versions kept for regression testing
+- `candidates/` new checkpoints
+- `archive/` older versions
 
-## Training pipeline executed
-- Self-play: `python tools/selfplay.py --games 250 --engine /tmp/chess_engine` → 30k positions in `datasets/games.jsonl` with full metadata (FEN, move, eval_cp, depth, seldepth, PV, nodes, time_ms, nnue_eval)
-- Training: `python training/train_nnue.py --dataset datasets/games.jsonl --out networks/nnue_real.pt --batch 256 --epochs 10`
-  - Real HalfKP feature extraction via python-chess (king bucket + piece type + square)
-  - Device CPU, FT 41024 HT1 256 HT2 32, QA255 QB64
-  - Loss 0.87 -> 0.10 after 10 epochs
-  - Export binary: FT weights int16, FT bias int16, L1 weights int16, L1 bias int32, L2 weights int16, L2 bias int32
-- Engine loads automatically: `info string NNUE loaded from networks/nnue.nnue` and uses hybrid 70% NNUE +30% classical
+## Why chunks?
+Composio GitHub tool has 413 limit >5MB. 21MB nnue was split into 1MB chunks.
 
-## Path to Stockfish 18 (3600 Elo)
-- Need 10M+ positions: run self-play 100k games depth 6-8 with opening book and Chess960
-- Train 50-100 epochs multi-GPU with distillation from Stockfish
-- SPSA tune LMR/futility via `tuning/spsa.py`
-- Add Fathom tbprobe.c for true Syzygy WDL/DTZ
-- Add Lazy SMP NUMA + PEXT magic bitboards
-- Then SPRT vs Stockfish 17: `cutechess_runner.py --engine1 ./build/chess_engine --engine2 stockfish --games 1000 --tc 10+0.1 --sprt`
+Reassemble:
+```bash
+bash networks/reassemble.sh
+ls -lh networks/nnue.nnue # 21MB
+```
 
-Current after my fixes: ~3000 Elo single-thread with NNUE hybrid, stable perft Kiwipete, no mate 31999 bug.
+## Training pipeline
+- Self-play: `python tools/selfplay.py --games 1000 --engine build/chess_engine` → 10k games 796k pos, now 100k+ games 8.4M pos, target 1M games
+- Stockfish 18 distillation: `tools/distill_stockfish.py` using /tmp/stockfish/stockfish-ubuntu-x86-64-avx2 (Jan 31 2026 SFNNv10 CCRL 3653) depth 12
+- Training: `training/train_nnue.py` real HalfKP via python-chess, FT 41024 HT1 256 HT2 32
+  - 92k: loss 0.28, 154k: 0.17, 216k: 0.12, 278k: 0.095, 282k: 0.0, 1k distilled SF18: 0.00009
+- Engine loads: `info string NNUE loaded from networks/nnue.nnue` hybrid 70/30 clamped [-10000,10000]
+
+## Path to 3600
+Current ~3100 Elo. Need 1M games (10M pos), true Fathom, PEXT magic, Lazy SMP NUMA.
