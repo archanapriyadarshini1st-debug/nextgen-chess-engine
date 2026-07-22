@@ -20,6 +20,9 @@ private:
     OpeningBook book_;
     NNUE nnue_;
     bool use_book_{false};
+    bool chess960_{false};
+    int multiPV_{1};
+    int skillLevel_{20};
 
     void handle_position(const std::string& line);
     void handle_go(const std::string& line);
