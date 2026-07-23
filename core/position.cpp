@@ -395,7 +395,7 @@ void Position::unmake_move() {
 
     remove_piece(to);
     if (u.move.flags() & FLAG_PROMOTION) {
-        put_piece(from, make_piece(stm_, 0));
+        put_piece(from, make_piece(stm_, 1));
     } else {
         put_piece(from, moved);
     }
