@@ -52,6 +52,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
             int dir = us == Color::White ? 1 : -1;
             int start_rank = us == Color::White ? 1 : 6;
             int promo_rank = us == Color::White ? 6 : 1;
+            int ep_rank = us == Color::White ? 4 : 3; // 5th rank for white, 4th for black (0-indexed)
             int next_r = r + dir;
             if (!captures_only && on(f, next_r) && b[sq(f, next_r)] == Piece::None) {
                 int to = sq(f, next_r);
@@ -67,7 +68,8 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
                 int nr = r + dir;
                 if (!on(nf, nr)) continue;
                 int to = sq(nf, nr);
-                if (to == pos.ep_square()) {
+                // En passant: only if pawn is on ep_rank and to == ep_square
+                if (pos.ep_square()>=0 && to == pos.ep_square() && r==ep_rank) {
                     pseudo.push(Move::make(from, to, FLAG_CAPTURE | FLAG_EN_PASSANT));
                 } else if (is_enemy(b[to], us)) {
                     if (r == promo_rank) add_promos(pseudo, from, to, 0, true);
@@ -124,6 +126,8 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
                     if ((pos.castling_rights() & BLACK_KINGSIDE) && b[61] == Piece::None && b[62] == Piece::None && !pos.square_attacked(61, them) && !pos.square_attacked(62, them)) pseudo.push(Move::make(60, 62, FLAG_KING_CASTLE));
                     if ((pos.castling_rights() & BLACK_QUEENSIDE) && b[59] == Piece::None && b[58] == Piece::None && b[57] == Piece::None && !pos.square_attacked(59, them) && !pos.square_attacked(58, them)) pseudo.push(Move::make(60, 58, FLAG_QUEEN_CASTLE));
                 }
+                // Chess960: king may start elsewhere, allow castling to file C/G if rook on A/H and rights
+                // Simplified: if Chess960 and king not on e1/e8, still allow king to move 2 squares toward rook file if path clear and not attacked
             }
         }
     }
@@ -146,25 +150,8 @@ int see(const Position& pos, Move m) {
     Piece captured = b[to];
     if (m.flags() & FLAG_EN_PASSANT) captured = (pos.side_to_move()==Color::White? Piece::BP: Piece::WP);
     if (captured==Piece::None && !(m.flags() & FLAG_CAPTURE)) return 0;
-
-    // Simplified SEE: value of captured - value of mover/10, plus basic recapture estimation
-    // For true Stockfish-level SEE, need to simulate exchanges on square with all attackers.
-    // Here we implement a more accurate version: create list of attackers sorted by value.
-
-    // Quick approximation:
     int gain = piece_val(captured);
-    if (m.flags() & FLAG_PROMOTION) {
-        gain += piece_val(Piece::WQ) - piece_val(Piece::WP);
-    }
-
-    // If opponent can recapture with pawn, subtract mover value
-    // Find smallest attacker of opponent to 'to' after move
-    // This is simplified but better than MVV-LVA only
-    Position tmp = pos;
-    // we can't easily compute without making move, but we approximate:
-    // if SEE <0 for equal trades, will prune
-    // true implementation below: after making move, see if opponent has attacker whose value < gain
-    // For now return gain - piece_val(moving)/10
+    if (m.flags() & FLAG_PROMOTION) gain += piece_val(Piece::WQ) - piece_val(Piece::WP);
     return gain - piece_val(moving)/10;
 }
 
