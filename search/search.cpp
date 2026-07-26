@@ -470,6 +470,16 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     Score best_score = 0;
     unsigned parallel_threads = std::max(1u, threads_);
 
+    // SAFETY: guarantee a legal fallback so we never emit a null bestmove
+    // (was: forced-mate / in-check positions returned 0000 and forfeited).
+    Move fallback{};
+    for (int i = 0; i < root.size; ++i) {
+        Position probe = pos;
+        if (probe.make_move(root.moves[i])) { fallback = root.moves[i]; break; }
+    }
+    best = fallback;
+    r.best_move = fallback;
+
     for (int depth = 1; depth <= max_depth; ++depth) {
         if (time_up()) break;
         bool accepted = false;
@@ -504,11 +514,13 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                 Score local_best = -INF;
                 Move local_move{};
                 int local_seldepth = 0;
+                bool have_move = false;
                 for (auto& fut : tasks) {
                     auto ev = fut.get();
-                    if (ev.score > local_best) { local_best = ev.score; local_move = ev.move; }
+                    if (!have_move || ev.score > local_best) { local_best = ev.score; local_move = ev.move; have_move = true; }
                     local_seldepth = std::max(local_seldepth, ev.seldepth);
                 }
+                if (!have_move) { accepted = true; continue; }
                 best = local_move;
                 best_score = local_best;
                 previous = local_best;
@@ -517,17 +529,19 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
             } else {
                 Score local_best = -INF;
                 Move local_move{};
+                bool have_move = false;
                 for (int i = 0; i < root.size; ++i) {
                     Move m = root.moves[i];
                     if (!pos.make_move(m)) continue;
                     Score score = -negamax(pos, depth - 1, -beta, -alpha, 1, false);
                     pos.unmake_move();
-                    if (score > local_best) { local_best = score; local_move = m; }
+                    if (!have_move || score > local_best) { local_best = score; local_move = m; have_move = true; }
                     if (score > alpha) alpha = score;
                     if (alpha >= beta) break;
                     if (time_up()) break;
                 }
 
+                if (!have_move) { accepted = true; continue; }
                 if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
                 if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
                 best = local_move;
@@ -536,7 +550,7 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                 accepted = true;
             }
         }
-        r.best_move = best;
+        if (!best.is_null()) r.best_move = best;
         r.score = best_score;
         r.depth = depth;
         if (time_up()) break;
