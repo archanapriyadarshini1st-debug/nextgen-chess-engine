@@ -23,7 +23,13 @@ void TT::clear() {
     generation_=0;
 }
 
-void TT::new_search() { generation_ += 8; }
+void TT::new_search() { 
+    generation_ += 8; 
+    if (generation_==0) { 
+        generation_=8; 
+        clear(); 
+    } 
+}
 
 void TT::prefetch(Key key) const {
 #if defined(__x86_64__)
@@ -36,13 +42,7 @@ TTEntry* TT::probe(Key key) {
     for (int i=0;i<4;++i) {
         if (cluster.entries[i].key == key) return &cluster.entries[i];
     }
-    // return best replace candidate (lowest depth, oldest gen)
-    TTEntry* replace = &cluster.entries[0];
-    for (int i=1;i<4;++i) {
-        if (cluster.entries[i].gen != generation_) { replace=&cluster.entries[i]; break; }
-        if (cluster.entries[i].depth < replace->depth) replace=&cluster.entries[i];
-    }
-    return replace;
+    return nullptr;
 }
 
 const TTEntry* TT::probe(Key key) const {
@@ -53,18 +53,28 @@ const TTEntry* TT::probe(Key key) const {
     return nullptr;
 }
 
+TTEntry* TT::replacement_slot(Key key) {
+    TTCluster &cluster = table_[key & mask_];
+    TTEntry* replace = &cluster.entries[0];
+    for (int i=0;i<4;++i) {
+        if (cluster.entries[i].key==0) return &cluster.entries[i];
+        if (cluster.entries[i].gen != generation_) { replace=&cluster.entries[i]; break; }
+        if (cluster.entries[i].depth < replace->depth) replace=&cluster.entries[i];
+    }
+    return replace;
+}
+
 void TT::store(Key key, int depth, Score score, TTFlag flag, Move best, Score eval, int ply) {
     TTEntry* e = probe(key);
-    // allow overwrite if deeper or exact or gen mismatch
+    if (!e) e = replacement_slot(key);
     bool isNew = e->key != key;
     if (!isNew && e->depth > depth + 2 && e->gen==generation_ && flag!=TTFlag::Exact) return;
+    if (e->key==0) isNew=true;
+    // mate distance handling removed here - done in search via value_to_tt
+    Score v = score;
     if (isNew || depth+2 >= e->depth || flag==TTFlag::Exact) {
         if (best.is_null() && e->key==key) best = e->best;
         e->key = key;
-        // mate distance handling
-        Score v = score;
-        if (v >  MATE_SCORE-1000) v += ply;
-        else if (v < -MATE_SCORE+1000) v -= ply;
         e->score = v;
         e->eval = eval;
         e->depth = static_cast<int16_t>(depth);
