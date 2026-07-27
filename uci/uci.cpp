@@ -182,20 +182,39 @@ void UCI::handle_go(const std::string& line) {
         }
     }
 
-    // Skill level: if <20, occasionally pick not best move
+    // Skill level: if <20, occasionally pick not best move - FIXED to only pick from root legal moves, not PV opponent moves
     SearchResult r = search_.think(pos_, limits);
-    if (skillLevel_ < 20 && !r.pv.empty() && r.pv.size()>1) {
-        // 20 is max, 0 is weakest - add randomness
-        int idx = (20 - skillLevel_) / 5;
-        if (idx>0 && r.pv.size()> (size_t)idx) {
-            // pick move at idx instead of best with some probability
-            if (rand()%100 < (20-skillLevel_)*5) {
-                r.best_move = r.pv[std::min((size_t)idx, r.pv.size()-1)];
+    if (skillLevel_ < 20) {
+        MoveList root;
+        generate_moves(pos_, root, false);
+        if (root.size>1) {
+            int idx = (20 - skillLevel_) / 2; // 0..10
+            if (idx>0 && idx < root.size) {
+                // Sort root by some heuristic to get plausible moves, then pick idx
+                // For now, pick move at idx after ordering by history (already ordered in think)
+                // Use rand to pick weaker move
+                if (rand()%100 < (20-skillLevel_)*5) {
+                    // Ensure we pick from root legal list, not PV
+                    // Find best move index in root, then pick idx away
+                    for (int i=0;i<root.size;++i) {
+                        if (root.moves[i].raw==r.best_move.raw) {
+                            int pick = std::min(root.size-1, i+idx);
+                            r.best_move = root.moves[pick];
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
 
-    std::cout << "info depth " << r.depth << " seldepth " << r.seldepth << " score cp " << r.score << " nodes " << r.nodes;
+    // Mate score handling per UCI: score mate N instead of cp 31999
+    if (std::abs(r.score) >= 30000-1000) {
+        int mate_in = (r.score>0) ? (32000 - r.score +1)/2 : (-32000 - r.score)/2;
+        std::cout << "info depth " << r.depth << " seldepth " << r.seldepth << " score mate " << mate_in << " nodes " << r.nodes;
+    } else {
+        std::cout << "info depth " << r.depth << " seldepth " << r.seldepth << " score cp " << r.score << " nodes " << r.nodes;
+    }
     if (!r.pv.empty()) std::cout << " pv " << join_pv(r.pv);
     std::cout << "\n";
     if (r.best_move.is_null()) std::cout << "bestmove 0000\n";
