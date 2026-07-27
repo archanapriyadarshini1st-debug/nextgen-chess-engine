@@ -14,7 +14,7 @@ struct TTEntry {
     Score score{0};
     int16_t depth{-1};
     TTFlag flag{TTFlag::Exact};
-    uint8_t gen{0};
+    uint16_t gen{0};
     int16_t eval{0};
 };
 
@@ -35,9 +35,10 @@ public:
     size_t hashfull() const;
 
 private:
+    TTEntry* replacement_slot(Key key);
     std::vector<TTCluster> table_;
     std::size_t mask_{0};
-    uint8_t generation_{0};
+    uint16_t generation_{0};
 };
 
 } // namespace chess
