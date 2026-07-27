@@ -28,6 +28,8 @@ public:
         for(auto& k: killers_) for(auto& m: k) m=Move{}; 
         for(auto& b: butterfly_) for(auto& f: b) for(auto& t: f) t=0;
         for(auto& c: countermove_) for(auto& m: c) m=Move{};
+        for(auto& c: capture_history_) for(auto& p: c) for(auto& v: p) v=0;
+        for(auto& c: cont_history_) for(auto& f: c) for(auto& t: f) t=0;
     }
     SearchResult think(Position& pos, const Limits& limits);
     void set_chess960(bool b) { chess960_=b; }
