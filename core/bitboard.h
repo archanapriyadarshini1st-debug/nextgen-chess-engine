@@ -4,11 +4,22 @@
 
 namespace Bitboard {
 
+// `attacks` points at this square's slice of the shared table.
+// Indexing is always relative to `attacks`, never to a global offset.
 struct Magic {
   uint64_t mask;
   uint64_t magic;
-  int shift;
+  unsigned shift;
   uint64_t* attacks;
+
+  // Index of `occ` within this square's slice.
+  inline unsigned index(uint64_t occ) const {
+#if defined(USE_PEXT)
+    return static_cast<unsigned>(_pext_u64(occ, mask));
+#else
+    return static_cast<unsigned>(((occ & mask) * magic) >> shift);
+#endif
+  }
 };
 
 extern uint64_t rook_table[102400];
@@ -22,26 +33,18 @@ extern uint64_t pawn_attacks[2][64];
 
 void init();
 
+// Brute-force check of every square against every relevant occupancy.
+// Called by init(); exposed so tests can assert it independently.
+bool verify();
+
 inline uint64_t rook_attacks(int sq, uint64_t occ) {
-#if defined(USE_PEXT) && defined(__BMI2__)
-  uint64_t idx = _pext_u64(occ, rook_magics[sq].mask);
-  return rook_table[rook_magics[sq].shift + idx];
-#else
-  Magic &m = rook_magics[sq];
-  uint64_t idx = ((occ & m.mask) * m.magic) >> m.shift;
-  return m.attacks[idx];
-#endif
+  const Magic& m = rook_magics[sq];
+  return m.attacks[m.index(occ)];
 }
 
 inline uint64_t bishop_attacks(int sq, uint64_t occ) {
-#if defined(USE_PEXT) && defined(__BMI2__)
-  uint64_t idx = _pext_u64(occ, bishop_magics[sq].mask);
-  return bishop_table[bishop_magics[sq].shift + idx];
-#else
-  Magic &m = bishop_magics[sq];
-  uint64_t idx = ((occ & m.mask) * m.magic) >> m.shift;
-  return m.attacks[idx];
-#endif
+  const Magic& m = bishop_magics[sq];
+  return m.attacks[m.index(occ)];
 }
 
 inline uint64_t queen_attacks(int sq, uint64_t occ) {
