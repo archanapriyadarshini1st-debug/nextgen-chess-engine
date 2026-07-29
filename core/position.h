@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include <array>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,7 @@ private:
     void refresh_key();
 
     std::array<Bitboard, 12> piece_bb_{};
+    std::array<int8_t, 2> king_squares_{{-1, -1}};
     std::array<Bitboard, 2> occ_{};
     std::array<Piece, 64> board_{};
     Color stm_{Color::White};
