@@ -3,7 +3,6 @@
 #include "tt.h"
 #include <array>
 #include <chrono>
-#include <memory>
 #include <vector>
 
 namespace chess {
@@ -19,12 +18,12 @@ struct SearchResult {
 
 class Search {
 public:
-    Search() : tt_(std::make_shared<TT>()) { init_tables(); }
-    void set_hash_mb(std::size_t mb) { tt_->resize_mb(mb); }
+    Search() { init_tables(); }
+    void set_hash_mb(std::size_t mb) { tt_.resize_mb(mb); }
     void set_threads(unsigned n) { threads_ = n ? n : 1; }
     unsigned threads() const { return threads_; }
     void clear() {
-        tt_->clear();
+        tt_.clear();
         for(auto& h: history_) for(auto& v: h) v=0;
         for(auto& k: killers_) for(auto& m: k) m=Move{};
         for(auto& b: butterfly_) for(auto& f: b) for(auto& t: f) t=0;
@@ -47,7 +46,7 @@ private:
     int adaptive_depth(const Position& pos, const Limits& limits) const;
     void init_tables();
 
-    std::shared_ptr<TT> tt_;
+    TT tt_;
     std::array<std::array<int, 64>, 12> history_{};
     std::array<std::array<Move, 2>, MAX_PLY> killers_{};
     std::array<std::array<std::array<int,64>, 12>, 2> capture_history_{};
