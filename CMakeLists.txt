@@ -1,11 +1,9 @@
-
 cmake_minimum_required(VERSION 3.20)
-project(nextgen_chess_engine LANGUAGES CXX)
+project(nextgen_chess_engine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
 option(BUILD_TESTS "Build tests" ON)
 
 add_library(chesscore
@@ -20,11 +18,12 @@ add_library(chesscore
     uci/uci.cpp
     logging/game_log.cpp
     tb/syzygy.cpp
+    tb/tbprobe.c
     opening/book.cpp
 )
 
-target_include_directories(chesscore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
+target_include_directories(chesscore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tb)
+target_compile_definitions(chesscore PRIVATE HAS_FATHOM=1)
 target_compile_options(chesscore PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall;-Wextra;-Wpedantic>
