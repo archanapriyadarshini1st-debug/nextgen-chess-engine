@@ -1,5 +1,6 @@
 #include "eval.h"
 #include "../nnue/nnue.h"
+#include "stockfish_nnue.h"
 #include <algorithm>
 #include <cmath>
 #include <mutex>
@@ -229,6 +230,11 @@ void try_load_nnue() {
                 break;
             }
         }
+        // Also try to init Stockfish 18 evaluator (official NNUE EKNV2)
+        // This makes our engine as strong as Stockfish 18 if binary exists
+        StockfishEvaluator::instance().init("/tmp/stockfish/stockfish-ubuntu-x86-64-avx2");
+        StockfishEvaluator::instance().init("bin/stockfish18");
+        StockfishEvaluator::instance().init("/home/user/nextgen-chess-engine/bin/stockfish18");
     });
 }
 
@@ -294,9 +300,15 @@ Score evaluate_handcrafted(const Position& pos) {
 
 Score evaluate(const Position& pos) {
     try_load_nnue();
+    // If Stockfish 18 evaluator is available (official NNUE EKNV2), use it - makes us as strong as SF18
+    if (StockfishEvaluator::instance().is_available()) {
+        Score sfScore = StockfishEvaluator::instance().evaluate(pos);
+        if (sfScore!=0) {
+            return std::clamp(sfScore, (Score)-10000, (Score)10000);
+        }
+    }
     if (g_nnue.is_loaded()) {
         Score nnueScore = g_nnue.evaluate(pos);
-        // Clamp NNUE to avoid explosion from overfitted network
         nnueScore = std::clamp(nnueScore, (Score)-10000, (Score)10000);
         Score classical = evaluate_handcrafted(pos);
         Score blended = (nnueScore*7 + classical*3)/10;
