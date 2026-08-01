@@ -3,6 +3,7 @@
 #include "../tb/syzygy.h"
 #include "../opening/book.h"
 #include "../nnue/nnue.h"
+#include "../evaluation/eval.h"
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -129,6 +130,13 @@ void UCI::handle_setoption(const std::string& line) {
         try { multiPV_ = std::stoi(value); } catch (...) {}
     } else if (name == "Skill Level") {
         try { skillLevel_ = std::stoi(value); } catch (...) {}
+    } else if (name == "ExternalEvalPath") {
+        set_external_eval(value == "<empty>" ? std::string() : value);
+    } else {
+        // SPSA-tunable search parameters, driven by tuning/spsa.py over real games
+        try {
+            if (search_.params().set(name, std::stoi(value))) search_.set_params(search_.params());
+        } catch (...) {}
     }
 }
 
@@ -246,6 +254,10 @@ int UCI::loop() {
             std::cout << "option name Move Overhead type spin default 10 min 0 max 5000\n";
             std::cout << "option name Ponder type check default false\n";
             std::cout << "option name UCI_Chess960 type check default false\n";
+            std::cout << "option name ExternalEvalPath type string default <empty>\n";
+            for (const auto& pn : SearchParams::names())
+                std::cout << "option name " << pn << " type spin default "
+                          << search_.params().get(pn) << " min -1000000 max 1000000\n";
             std::cout << "uciok\n";
         } else if (line == "isready") {
             std::cout << "readyok\n";

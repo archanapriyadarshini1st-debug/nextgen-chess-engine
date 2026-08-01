@@ -21,6 +21,8 @@ struct Undo {
 
 class Position {
 public:
+    Position();
+
     void set_startpos();
     void set_fen(const std::string& fen);
     std::string fen() const;
@@ -31,9 +33,17 @@ public:
     bool legal(Move m) const;
     bool in_check(Color side) const;
     bool square_attacked(int sq, Color by) const;
-    int king_square(Color side) const;
 
-    // draw detection - Phase 1 absolute correctness
+    // O(1) - king square is maintained incrementally by put_piece/remove_piece.
+    int king_square(Color side) const { return king_sq_[static_cast<int>(side)]; }
+
+    // Bitboard helpers used by movegen / SEE / eval.
+    Bitboard attackers_to(int sq, Bitboard occ) const;
+    bool attacked_by(int sq, Color by, Bitboard occ, Bitboard byMask) const;
+    // Legality of a pseudo-legal move, without touching engine state.
+    bool legal_pseudo(Move m) const;
+
+    // draw detection
     bool is_draw(int ply) const;
     bool is_threefold() const;
     bool is_fifty_move() const { return halfmove_clock_ >= 100; }
@@ -56,19 +66,23 @@ public:
     int game_ply() const { return (fullmove_number_-1)*2 + (stm_==Color::Black?1:0); }
     const std::vector<Key>& key_history() const { return key_history_; }
 
-    // evaluation helpers
     Bitboard pieces(Piece p) const { return piece_bb_[piece_index(p)]; }
+    Bitboard pieces(Color c, int type) const { return piece_bb_[piece_index(make_piece(c, type))]; }
     int count(Piece p) const { return __builtin_popcountll(pieces(p)); }
+
+    // Debug: verify the incrementally maintained key against a full rebuild.
+    Key recompute_key() const;
+    bool key_ok() const { return key_ == recompute_key(); }
 
 private:
     void clear();
     void put_piece(int sq, Piece p);
     void remove_piece(int sq);
-    void refresh_key();
 
     std::array<Bitboard, 12> piece_bb_{};
     std::array<Bitboard, 2> occ_{};
     std::array<Piece, 64> board_{};
+    std::array<int, 2> king_sq_{-1, -1};
     Color stm_{Color::White};
     std::uint8_t castling_rights_{0};
     std::int8_t ep_square_{-1};
@@ -77,7 +91,7 @@ private:
     Key key_{0};
     Score eval_cache_{0};
     std::vector<Undo> history_;
-    std::vector<Key> key_history_; // for threefold detection
+    std::vector<Key> key_history_;
     std::vector<int> halfmove_history_;
 };
 

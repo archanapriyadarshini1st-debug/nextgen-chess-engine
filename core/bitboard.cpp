@@ -1,13 +1,14 @@
 #include "bitboard.h"
 #include <cstring>
 #include <cstdint>
+#include <random>
+#include <vector>
 
 typedef uint64_t U64;
-typedef int Square;
 using chess::file_of;
 using chess::rank_of;
-static constexpr Square make_sq(int f,int r){ return r*8+f; }
-static constexpr U64 square_bb(Square s){ return 1ULL<<s; }
+static constexpr int  make_sq(int f, int r) { return r * 8 + f; }
+static constexpr U64  square_bb(int s)      { return 1ULL << s; }
 
 namespace Bitboard {
 
@@ -19,123 +20,156 @@ Magic bishop_magics[64];
 U64 knight_attacks[64];
 U64 king_attacks[64];
 U64 pawn_attacks[2][64];
+U64 between_bb[64][64];
+U64 line_bb[64][64];
 
-static U64 generate_rook_mask(Square sq){
-  U64 mask=0;
-  int r=rank_of(sq), f=file_of(sq);
-  for(int rr=r+1; rr<=6; ++rr) mask|=square_bb(make_sq(f,rr));
-  for(int rr=r-1; rr>=1; --rr) mask|=square_bb(make_sq(f,rr));
-  for(int ff=f+1; ff<=6; ++ff) mask|=square_bb(make_sq(ff,r));
-  for(int ff=f-1; ff>=1; --ff) mask|=square_bb(make_sq(ff,r));
+static int popcnt(U64 x) { return __builtin_popcountll(x); }
+
+static U64 generate_rook_mask(int sq) {
+  U64 mask = 0; int r = rank_of(sq), f = file_of(sq);
+  for (int rr = r + 1; rr <= 6; ++rr) mask |= square_bb(make_sq(f, rr));
+  for (int rr = r - 1; rr >= 1; --rr) mask |= square_bb(make_sq(f, rr));
+  for (int ff = f + 1; ff <= 6; ++ff) mask |= square_bb(make_sq(ff, r));
+  for (int ff = f - 1; ff >= 1; --ff) mask |= square_bb(make_sq(ff, r));
   return mask;
 }
-static U64 generate_bishop_mask(Square sq){
-  U64 mask=0;
-  int r=rank_of(sq), f=file_of(sq);
-  for(int dr=1,df=1; r+dr<=6 && f+df<=6; ++dr,++df) mask|=square_bb(make_sq(f+df,r+dr));
-  for(int dr=1,df=1; r+dr<=6 && f-df>=1; ++dr,++df) mask|=square_bb(make_sq(f-df,r+dr));
-  for(int dr=1,df=1; r-dr>=1 && f+df<=6; ++dr,++df) mask|=square_bb(make_sq(f+df,r-dr));
-  for(int dr=1,df=1; r-dr>=1 && f-df>=1; ++dr,++df) mask|=square_bb(make_sq(f-df,r-dr));
+static U64 generate_bishop_mask(int sq) {
+  U64 mask = 0; int r = rank_of(sq), f = file_of(sq);
+  for (int d = 1; r + d <= 6 && f + d <= 6; ++d) mask |= square_bb(make_sq(f + d, r + d));
+  for (int d = 1; r + d <= 6 && f - d >= 1; ++d) mask |= square_bb(make_sq(f - d, r + d));
+  for (int d = 1; r - d >= 1 && f + d <= 6; ++d) mask |= square_bb(make_sq(f + d, r - d));
+  for (int d = 1; r - d >= 1 && f - d >= 1; ++d) mask |= square_bb(make_sq(f - d, r - d));
   return mask;
 }
-static U64 rook_attacks_slow(Square sq, U64 block){
-  U64 att=0;
-  int r=rank_of(sq), f=file_of(sq);
-  for(int rr=r+1; rr<8; ++rr){ Square s=make_sq(f,rr); att|=square_bb(s); if(block & square_bb(s)) break; }
-  for(int rr=r-1; rr>=0; --rr){ Square s=make_sq(f,rr); att|=square_bb(s); if(block & square_bb(s)) break; }
-  for(int ff=f+1; ff<8; ++ff){ Square s=make_sq(ff,r); att|=square_bb(s); if(block & square_bb(s)) break; }
-  for(int ff=f-1; ff>=0; --ff){ Square s=make_sq(ff,r); att|=square_bb(s); if(block & square_bb(s)) break; }
+static U64 slide(int sq, U64 block, const int dirs[4][2]) {
+  U64 att = 0; int r = rank_of(sq), f = file_of(sq);
+  for (int i = 0; i < 4; ++i) {
+    int nf = f + dirs[i][0], nr = r + dirs[i][1];
+    while (nf >= 0 && nf < 8 && nr >= 0 && nr < 8) {
+      int s = make_sq(nf, nr);
+      att |= square_bb(s);
+      if (block & square_bb(s)) break;
+      nf += dirs[i][0]; nr += dirs[i][1];
+    }
+  }
   return att;
 }
-static U64 bishop_attacks_slow(Square sq, U64 block){
-  U64 att=0;
-  int r=rank_of(sq), f=file_of(sq);
-  for(int dr=1,df=1; r+dr<8 && f+df<8; ++dr,++df){ Square s=make_sq(f+df,r+dr); att|=square_bb(s); if(block&square_bb(s)) break; }
-  for(int dr=1,df=1; r+dr<8 && f-df>=0; ++dr,++df){ Square s=make_sq(f-df,r+dr); att|=square_bb(s); if(block&square_bb(s)) break; }
-  for(int dr=1,df=1; r-dr>=0 && f+df<8; ++dr,++df){ Square s=make_sq(f+df,r-dr); att|=square_bb(s); if(block&square_bb(s)) break; }
-  for(int dr=1,df=1; r-dr>=0 && f-df>=0; ++dr,++df){ Square s=make_sq(f-df,r-dr); att|=square_bb(s); if(block&square_bb(s)) break; }
-  return att;
-}
-// Minimal magic numbers from Stockfish - for brevity we use classic generation with precomputed table building at init using brute force hash search would be heavy.
-// We use PEXT fast path by default when USE_PEXT defined, else we use classic with pre-built magics from known good values.
+static const int ROOK_DIRS[4][2]   = {{1,0},{-1,0},{0,1},{0,-1}};
+static const int BISHOP_DIRS[4][2] = {{1,1},{1,-1},{-1,1},{-1,-1}};
+
+U64 rook_attacks_slow(int sq, U64 block)   { return slide(sq, block, ROOK_DIRS); }
+U64 bishop_attacks_slow(int sq, U64 block) { return slide(sq, block, BISHOP_DIRS); }
+
 extern const U64 ROOK_MAGICS_NUM[64];
 extern const U64 BISHOP_MAGICS_NUM[64];
-static int popcnt(U64 x){ return __builtin_popcountll(x); }
 
-void init(){
-  // knights
-  for(int sq=0;sq<64;++sq){
-    U64 att=0;
-    int r=rank_of(Square(sq)), f=file_of(Square(sq));
-    const int drN[8]={1,2,2,1,-1,-2,-2,-1};
-    const int dfN[8]={2,1,-1,-2,-2,-1,1,2};
-    for(int i=0;i<8;++i){ int nr=r+drN[i], nf=f+dfN[i]; if(nr>=0&&nr<8&&nf>=0&&nf<8) att|=square_bb(make_sq(nf,nr)); }
-    knight_attacks[sq]=att;
-    U64 katt=0;
-    for(int dr=-1;dr<=1;++dr) for(int df=-1;df<=1;++df) if(dr||df){ int nr=r+dr,nf=f+df; if(nr>=0&&nr<8&&nf>=0&&nf<8) katt|=square_bb(make_sq(nf,nr)); }
-    king_attacks[sq]=katt;
-    U64 wp=0,bp=0;
-    if(r<7){ if(f>0) wp|=square_bb(make_sq(f-1,r+1)); if(f<7) wp|=square_bb(make_sq(f+1,r+1)); }
-    if(r>0){ if(f>0) bp|=square_bb(make_sq(f-1,r-1)); if(f<7) bp|=square_bb(make_sq(f+1,r-1)); }
-    pawn_attacks[0][sq]=wp;
-    pawn_attacks[1][sq]=bp;
+// Fill one square's attack table. Returns true when the chosen index scheme is
+// collision free. When BMI2 is available we index by PEXT (always bijective);
+// otherwise we index by magic multiply and verify - falling back to a magic
+// search if the hardcoded constant does not work for this mask.
+static bool build_square(U64 mask, U64 magic, unsigned shift, U64* table, int sq, bool rook) {
+  const int bits = popcnt(mask);
+  const int size = 1 << bits;
+  int bitpos[16]; int nb = 0;
+  for (int i = 0; i < 64; ++i) if ((mask >> i) & 1ULL) bitpos[nb++] = i;
+
+  std::vector<char> used(size, 0);
+  for (int i = 0; i < size; ++i) {
+    U64 occ = 0;
+    for (int j = 0; j < bits; ++j) if ((i >> j) & 1) occ |= 1ULL << bitpos[j];
+    U64 att = rook ? rook_attacks_slow(sq, occ) : bishop_attacks_slow(sq, occ);
+#if defined(USE_PEXT) && defined(__BMI2__)
+    (void)magic; (void)shift;
+    size_t idx = (size_t)i;               // enumeration index == PEXT index
+#else
+    size_t idx = (size_t)(((occ & mask) * magic) >> shift);
+    if (idx >= (size_t)size) return false;
+    if (used[idx] && table[idx] != att) return false;   // real collision
+#endif
+    used[idx] = 1;
+    table[idx] = att;
   }
-
-  // rook magics initialization - simplified: use direct attack table with 4096 per square using mask bits enumeration (12 bits average). For brevity we init with slow method cached via hash map linear search.
-  // To keep code short and correct, we build tables on fly using classic occupancy enumeration.
-  int rook_offset=0, bishop_offset=0;
-  for(int sq=0;sq<64;++sq){
-    U64 mask = generate_rook_mask(Square(sq));
-    int bits = popcnt(mask);
-    int size = 1<<bits;
-
-    rook_magics[sq].mask = mask;
-    rook_magics[sq].shift = 64-bits;
-    // Use known magic from public domain for correctness - we embed simplified magics
-    // For this improved version we will compute attacks and store in hash table using magic multiplication trick with random search; to save time we use slow lookup fallback that indexes by occupancy enumeration (not magic) but we still store.
-    // We'll fill rook_magics[].attacks pointer
-    rook_magics[sq].attacks = &rook_table[rook_offset];
-    // brute force mapping for all occupancies of mask
-    // Create list of bits positions
-    int bitpos[64]; int idx=0;
-    for(int i=0;i<64;++i) if(mask>>i &1) bitpos[idx++]=i;
-    for(int i=0;i<size;++i){
-      U64 occ=0;
-      for(int j=0;j<bits;++j) if(i>>j &1) occ|=1ULL<<bitpos[j];
-      U64 att = rook_attacks_slow(Square(sq), occ);
-      // find index by magic if we have
-      // For classic: we use (occ*magic)>>shift but we don't have magic yet, so we store at index i for PEXT path, and also compute magic index for traditional
-      // Simplification: we will use PEXT path by default if compiled with -DBMI2, else we will use direct lookup with same i (requires storing magic that makes indexing same as i) - we can fake magic to use enumeration directly by using precomputed table that is indexed by pext result which equals i when mask bits are compressive.
-      // For real Stockfish magic numbers we would use ROOK_MAGICS_NUM.
-      // So for portability, we map both: store at i, and also at magic index using known magic if available -> but here we will just store at i, and in rook_attacks() we use PEXT which also produces i-like index.
-      // To also support magic multiplication we compute magic index using pseudo magic 0x... and fill.
-      // Approach: use table sized 1<<bits, store at i. Then in attack function when USE_PEXT not defined, we compute pext-like index via pext intrinsic if available, else fall back to using enumeration hash lookup via precomputed map (we will do linear search fallback not efficient but okay for correctness).
-      // For simplicity, for non-PEXT builds we will brute force occupancy -> attack by scanning table to find occ match? O(4096) per lookup heavy. So we switch to always use PEXT via _pext_u64 when BMI2 available; otherwise we use slow attack generation directly (no magic)
-      rook_table[rook_offset + i] = att;
-    }
-    rook_magics[sq].magic = ROOK_MAGICS_NUM[sq];
-    rook_offset+=size;
-
-    U64 bmask = generate_bishop_mask(Square(sq));
-    int bbits = popcnt(bmask);
-    int bsize = 1<<bbits;
-    bishop_magics[sq].mask = bmask;
-    bishop_magics[sq].shift = 64-bbits;
-    bishop_magics[sq].attacks = &bishop_table[bishop_offset];
-    int bpos[64]; idx=0;
-    for(int i=0;i<64;++i) if(bmask>>i &1) bpos[idx++]=i;
-    for(int i=0;i<bsize;++i){
-      U64 occ=0;
-      for(int j=0;j<bbits;++j) if(i>>j &1) occ|=1ULL<<bpos[j];
-      bishop_table[bishop_offset+i]=bishop_attacks_slow(Square(sq), occ);
-    }
-    bishop_magics[sq].magic = BISHOP_MAGICS_NUM[sq];
-    bishop_offset+=bsize;
-  }
+  return true;
 }
 
-// Minimal known magic numbers - taken from public domain Stockfish source (MIT-like)
-// For brevity in this file we declare them; full correct numbers included here
+static U64 sparse_random(std::mt19937_64& rng) {
+  return rng() & rng() & rng();
+}
+
+void init() {
+  static bool done = false;
+  if (done) return;
+  done = true;
+
+  for (int sq = 0; sq < 64; ++sq) {
+    int r = rank_of(sq), f = file_of(sq);
+    U64 att = 0;
+    const int drN[8] = {1,2,2,1,-1,-2,-2,-1};
+    const int dfN[8] = {2,1,-1,-2,-2,-1,1,2};
+    for (int i = 0; i < 8; ++i) {
+      int nr = r + drN[i], nf = f + dfN[i];
+      if (nr >= 0 && nr < 8 && nf >= 0 && nf < 8) att |= square_bb(make_sq(nf, nr));
+    }
+    knight_attacks[sq] = att;
+
+    U64 katt = 0;
+    for (int dr = -1; dr <= 1; ++dr) for (int df = -1; df <= 1; ++df) if (dr || df) {
+      int nr = r + dr, nf = f + df;
+      if (nr >= 0 && nr < 8 && nf >= 0 && nf < 8) katt |= square_bb(make_sq(nf, nr));
+    }
+    king_attacks[sq] = katt;
+
+    U64 wp = 0, bp = 0;
+    if (r < 7) { if (f > 0) wp |= square_bb(make_sq(f-1, r+1)); if (f < 7) wp |= square_bb(make_sq(f+1, r+1)); }
+    if (r > 0) { if (f > 0) bp |= square_bb(make_sq(f-1, r-1)); if (f < 7) bp |= square_bb(make_sq(f+1, r-1)); }
+    pawn_attacks[0][sq] = wp;
+    pawn_attacks[1][sq] = bp;
+  }
+
+  std::mt19937_64 rng(0xDEADBEEFCAFEULL);
+  size_t roff = 0, boff = 0;
+  for (int sq = 0; sq < 64; ++sq) {
+    U64 mask = generate_rook_mask(sq);
+    int bits = popcnt(mask);
+    rook_magics[sq].mask    = mask;
+    rook_magics[sq].shift   = 64 - bits;
+    rook_magics[sq].attacks = &rook_table[roff];
+    U64 magic = ROOK_MAGICS_NUM[sq];
+    while (!build_square(mask, magic, 64 - bits, &rook_table[roff], sq, true)) {
+      magic = sparse_random(rng);
+    }
+    rook_magics[sq].magic = magic;
+    roff += (size_t)1 << bits;
+
+    U64 bmask = generate_bishop_mask(sq);
+    int bbits = popcnt(bmask);
+    bishop_magics[sq].mask    = bmask;
+    bishop_magics[sq].shift   = 64 - bbits;
+    bishop_magics[sq].attacks = &bishop_table[boff];
+    U64 bmagic = BISHOP_MAGICS_NUM[sq];
+    while (!build_square(bmask, bmagic, 64 - bbits, &bishop_table[boff], sq, false)) {
+      bmagic = sparse_random(rng);
+    }
+    bishop_magics[sq].magic = bmagic;
+    boff += (size_t)1 << bbits;
+  }
+
+  for (int a = 0; a < 64; ++a) for (int b = 0; b < 64; ++b) {
+    between_bb[a][b] = 0; line_bb[a][b] = 0;
+    if (a == b) continue;
+    for (int i = 0; i < 4; ++i) {
+      const int (*dirs)[2] = (i < 2) ? nullptr : nullptr; (void)dirs;
+    }
+    U64 ra = rook_attacks_slow(a, 0), ba = bishop_attacks_slow(a, 0);
+    if (ra & square_bb(b)) {
+      between_bb[a][b] = rook_attacks_slow(a, square_bb(b)) & rook_attacks_slow(b, square_bb(a));
+      line_bb[a][b]    = (ra & rook_attacks_slow(b, 0)) | square_bb(a) | square_bb(b);
+    } else if (ba & square_bb(b)) {
+      between_bb[a][b] = bishop_attacks_slow(a, square_bb(b)) & bishop_attacks_slow(b, square_bb(a));
+      line_bb[a][b]    = (ba & bishop_attacks_slow(b, 0)) | square_bb(a) | square_bb(b);
+    }
+  }
+}
 const U64 ROOK_MAGICS_NUM[64] = {
 0x8a80104000800020ULL,
 0x140002000100040ULL,

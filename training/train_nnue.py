@@ -1,212 +1,300 @@
 #!/usr/bin/env python3
 """
-Real NNUE trainer - HalfKP 41024x256x32x1 with PyTorch
-- Loads JSONL datasets from datasets/games.jsonl
-- Creates real HalfKP features from FEN using python-chess
-- Trains with distillation, mixed precision, checkpoint
+NNUE trainer - HalfKP-lite 5120 x 256 x 32 x 1.
+
+What changed vs the old trainer
+-------------------------------
+* nn.EmbeddingBag(mode="sum") over ACTIVE FEATURE INDICES instead of a dense
+  torch.zeros(41024) with ~32 ones. The old path cost 41024*4 bytes per sample
+  per side -> ~84 MB for a batch of 512, plus a 41024x256 dense matmul that was
+  99.9% multiplications by zero. EmbeddingBag gathers only the ~30 active rows.
+* Accumulators are ordered (side-to-move, other-side) and the label is the
+  side-to-move relative eval, matching nnue.cpp exactly. The old code fed
+  (white, black) but trained on stm-relative labels while C++ flipped the sign
+  for black, so the net was fitted against a sign-flipped target half the time.
+* Feature space is 8*10*64 = 5120, kings excluded. The old 41024 only ever
+  addressed 5120 slots and let kings overflow into the next bucket.
+* Loss mixes the teacher eval with the actual game result (WDL), in win
+  probability space, which is what stops the loss-0.0 overfit.
+* Exports a versioned binary header so the engine refuses a mismatched net
+  instead of silently evaluating garbage.
 """
 
-import torch, torch.nn as nn, json, argparse, os, random
+import argparse
+import json
+import math
+import os
+import struct
 from pathlib import Path
-from torch.utils.data import Dataset, DataLoader
 
-FT_SIZE=41024
-HT1=256
-HT2=32
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 
-# Piece mapping for HalfKP: 10 types
-# 0: own pawn, 1: own knight, 2: own bishop, 3: own rook, 4: own queen,
-# 5: enemy pawn, 6: enemy knight, 7: enemy bishop, 8: enemy rook, 9: enemy queen
-def piece_to_halfkp_type(piece, perspective_color):
-    # piece is python-chess piece
-    # perspective_color: True for white, False for black
-    # Returns type index 0..9 or -1 for king
-    import chess
-    if piece.piece_type == chess.KING:
-        return -1
-    is_own = (piece.color == perspective_color)
-    base = 0 if is_own else 5
-    if piece.piece_type == chess.PAWN: return base+0
-    if piece.piece_type == chess.KNIGHT: return base+1
-    if piece.piece_type == chess.BISHOP: return base+2
-    if piece.piece_type == chess.ROOK: return base+3
-    if piece.piece_type == chess.QUEEN: return base+4
-    return -1
+KING_BUCKETS = 8
+PIECE_TYPES = 10
+FT_SIZE = KING_BUCKETS * PIECE_TYPES * 64      # 5120
+THREAT_INPUTS = 2
+HT1 = 256
+HT2 = 32
+QA = 255
+QB = 64
+NNUE_SCALE = 400.0
+MAGIC = b"NGCEv3\0\0"
 
-def king_bucket(king_sq):
-    # 8 buckets based on file? Stockfish uses (file//4 + rank*2) etc. Simplified: rank//4 *2 + file//4?
-    # Use 8 buckets: king square //8? Actually 64 squares /8 =8 buckets of 8 squares each.
-    return king_sq // 8
 
+# --------------------------------------------------------------------------
+# Feature extraction - MUST stay in lockstep with NNUE::make_feature in C++.
+# --------------------------------------------------------------------------
 def fen_to_features(fen):
-    """
-    Returns white_features, black_features as list of active indices
-    """
-    try:
-        import chess
-        board = chess.Board(fen)
-        # find kings
-        wk = board.king(chess.WHITE)
-        bk = board.king(chess.BLACK)
-        if wk is None or bk is None:
-            return [], []
+    """Return (us_indices, them_indices) for the side to move."""
+    import chess
 
-        white_active=[]
-        black_active=[]
-        for sq in chess.SQUARES:
-            piece = board.piece_at(sq)
-            if piece is None: continue
-            if piece.piece_type == chess.KING: continue
+    board = chess.Board(fen)
+    wk, bk = board.king(chess.WHITE), board.king(chess.BLACK)
+    if wk is None or bk is None:
+        return None
 
-            # White perspective
-            if wk is not None:
-                kb = king_bucket(wk)
-                pt = piece_to_halfkp_type(piece, chess.WHITE)
-                if pt>=0:
-                    # mirror square for black perspective? For white perspective, square as is
-                    feat = kb*640 + pt*64 + sq
-                    if feat < FT_SIZE:
-                        white_active.append(feat)
-            # Black perspective - mirror squares
-            if bk is not None:
-                kb = king_bucket(bk ^ 56) # mirror king
-                # mirror piece square for black perspective
-                sq_mirrored = sq ^ 56
-                pt = piece_to_halfkp_type(piece, chess.BLACK)
-                if pt>=0:
-                    feat = kb*640 + pt*64 + sq_mirrored
-                    if feat < FT_SIZE:
-                        black_active.append(feat)
+    white, black = [], []
+    for sq, piece in board.piece_map().items():
+        if piece.piece_type == chess.KING:
+            continue
+        t = piece.piece_type - 1  # 0..4 for P N B R Q
 
-        return white_active, black_active
-    except Exception as e:
-        # print(f"fen error {e}")
-        return [], []
+        # white perspective: raw squares
+        tw = (0 if piece.color == chess.WHITE else 5) + t
+        white.append((wk // 8) * 640 + tw * 64 + sq)
+
+        # black perspective: vertically mirrored squares
+        tb = (0 if piece.color == chess.BLACK else 5) + t
+        black.append(((bk ^ 56) // 8) * 640 + tb * 64 + (sq ^ 56))
+
+    us, them = (white, black) if board.turn == chess.WHITE else (black, white)
+    us_color = board.turn
+    them_color = not us_color
+    enemy_threats = 0
+    own_threats = 0
+    for sq, piece in board.piece_map().items():
+        if piece.piece_type == chess.KING:
+            continue
+        if piece.color == them_color and board.attackers(us_color, sq):
+            enemy_threats += 1
+        if piece.color == us_color and board.attackers(them_color, sq):
+            own_threats += 1
+    threats = [min(255, enemy_threats * 255 // 8), min(255, own_threats * 255 // 8)]
+    return us, them, threats
+
+
+def result_to_wdl(result, stm_is_white):
+    """'1-0'/'0-1'/'1/2-1/2' -> win probability for the side to move."""
+    if result == "1-0":
+        w = 1.0
+    elif result == "0-1":
+        w = 0.0
+    elif result in ("1/2-1/2", "1/2"):
+        w = 0.5
+    else:
+        return None
+    return w if stm_is_white else 1.0 - w
+
+
+class GameDataset(Dataset):
+    """Stores active feature indices, not dense vectors."""
+
+    def __init__(self, paths, limit=None):
+        self.samples = []
+        skipped = 0
+        for path in paths:
+            with open(path) as f:
+                for line in f:
+                    if limit and len(self.samples) >= limit:
+                        break
+                    try:
+                        e = json.loads(line)
+                    except json.JSONDecodeError:
+                        skipped += 1
+                        continue
+                    fen = e.get("fen")
+                    cp = e.get("eval_cp", e.get("sf_eval_cp"))
+                    if fen is None or cp is None:
+                        skipped += 1
+                        continue
+                    feats = fen_to_features(fen)
+                    if feats is None or not feats[0] and not feats[1]:
+                        skipped += 1
+                        continue
+                    us, them, threats = feats
+                    stm_white = fen.split()[1] == "w"
+                    wdl = result_to_wdl(e.get("result", "*"), stm_white)
+                    self.samples.append(
+                        (
+                            np.asarray(us, dtype=np.int64),
+                            np.asarray(them, dtype=np.int64),
+                            np.asarray(threats, dtype=np.float32),
+                            float(np.clip(cp, -3000, 3000)),
+                            -1.0 if wdl is None else wdl,
+                        )
+                    )
+        print(f"loaded {len(self.samples)} positions ({skipped} skipped)")
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, i):
+        return self.samples[i]
+
+
+def collate(batch):
+    """Pack variable length index lists into EmbeddingBag (input, offsets)."""
+    us_idx, us_off, them_idx, them_off = [], [], [], []
+    threats, cps, wdls = [], [], []
+    u = t = 0
+    for us, them, thr, cp, wdl in batch:
+        us_off.append(u)
+        them_off.append(t)
+        us_idx.append(us)
+        them_idx.append(them)
+        u += len(us)
+        t += len(them)
+        threats.append(thr)
+        cps.append(cp)
+        wdls.append(wdl)
+    cat = lambda xs: torch.from_numpy(np.concatenate(xs)) if xs else torch.zeros(0, dtype=torch.long)
+    return (
+        cat(us_idx),
+        torch.tensor(us_off, dtype=torch.long),
+        cat(them_idx),
+        torch.tensor(them_off, dtype=torch.long),
+        torch.tensor(np.asarray(threats), dtype=torch.float32),
+        torch.tensor(cps, dtype=torch.float32).unsqueeze(1),
+        torch.tensor(wdls, dtype=torch.float32).unsqueeze(1),
+    )
+
 
 class NNUE(nn.Module):
     def __init__(self):
         super().__init__()
-        self.ft = nn.Linear(FT_SIZE, HT1)
-        self.l1 = nn.Linear(HT1*2, HT2)
+        self.ft = nn.EmbeddingBag(FT_SIZE, HT1, mode="sum", sparse=False)
+        self.ft_bias = nn.Parameter(torch.zeros(HT1))
+        self.l1 = nn.Linear(HT1 * 2 + THREAT_INPUTS, HT2)
         self.l2 = nn.Linear(HT2, 1)
-    def forward(self, white, black):
-        w = torch.clamp(self.ft(white), 0, 1)
-        b = torch.clamp(self.ft(black), 0, 1)
-        x = torch.cat([w,b], dim=1)
-        x = torch.clamp(self.l1(x), 0, 1)
-        return self.l2(x)
+        nn.init.normal_(self.ft.weight, std=0.01)
 
-class GameDataset(Dataset):
-    def __init__(self, jsonl_path):
-        self.entries=[]
-        with open(jsonl_path) as f:
-            for line in f:
-                try:
-                    e=json.loads(line)
-                    if 'fen' in e and 'eval_cp' in e:
-                        self.entries.append(e)
-                except: pass
-        print(f"Loaded {len(self.entries)} positions from {jsonl_path}")
+    def forward(self, us_idx, us_off, them_idx, them_off, threats):
+        us = torch.clamp(self.ft(us_idx, us_off) + self.ft_bias, 0.0, 1.0)
+        them = torch.clamp(self.ft(them_idx, them_off) + self.ft_bias, 0.0, 1.0)
+        x = torch.cat([us, them, threats / 255.0], dim=1)  # stm FIRST + threats
+        x = torch.clamp(self.l1(x), 0.0, 1.0)
+        return self.l2(x)                          # stm-relative, in eval/400 units
 
-    def __len__(self): return len(self.entries)
 
-    def __getitem__(self, idx):
-        e=self.entries[idx]
-        fen = e.get('fen','rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-        white_active, black_active = fen_to_features(fen)
-        white = torch.zeros(FT_SIZE)
-        black = torch.zeros(FT_SIZE)
-        for f in white_active:
-            if f < FT_SIZE:
-                white[f]=1.0
-        for f in black_active:
-            if f < FT_SIZE:
-                black[f]=1.0
-        # If no features (king missing), random fallback
-        if len(white_active)==0 and len(black_active)==0:
-            for _ in range(32):
-                white[random.randint(0, FT_SIZE-1)]=1
-                black[random.randint(0, FT_SIZE-1)]=1
-        target = torch.tensor([e.get('eval_cp',0)/400.0], dtype=torch.float32)
-        # Clamp target to -10..10 for stability
-        target = torch.clamp(target, -10, 10)
-        return white, black, target
+def win_prob(cp_over_400):
+    return torch.sigmoid(cp_over_400 * 400.0 / 400.0)
+
 
 def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device {device} FT={FT_SIZE} HT1={HT1} HT2={HT2}")
-    ds = GameDataset(args.dataset)
-    if len(ds)==0:
-        print("No data")
+    ds = GameDataset(args.dataset, args.limit)
+    if len(ds) == 0:
+        print("no data")
         return
-    dl = DataLoader(ds, batch_size=args.batch, shuffle=True, num_workers=0)
-    model = NNUE().to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
-    try:
-        scaler = torch.amp.GradScaler('cuda')
-    except:
-        scaler = torch.cuda.amp.GradScaler()
-    loss_fn = nn.MSELoss()
 
-    best_loss=float('inf')
+    n_val = max(1, int(len(ds) * 0.02))
+    train_ds, val_ds = torch.utils.data.random_split(
+        ds, [len(ds) - n_val, n_val], generator=torch.Generator().manual_seed(0)
+    )
+    dl = DataLoader(train_ds, batch_size=args.batch, shuffle=True,
+                    collate_fn=collate, num_workers=args.workers, drop_last=True)
+    vdl = DataLoader(val_ds, batch_size=args.batch, shuffle=False, collate_fn=collate)
+
+    model = NNUE().to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=max(1, args.epochs))
+
+    print(f"device={device} ft={FT_SIZE} ht1={HT1} ht2={HT2} "
+          f"train={len(train_ds)} val={len(val_ds)} lambda={args.lam}")
+
+    best = float("inf")
     for epoch in range(args.epochs):
-        total=0
-        count=0
-        for white, black, target in dl:
-            white, black, target = white.to(device), black.to(device), target.to(device)
-            opt.zero_grad()
-            try:
-                with torch.amp.autocast('cuda'):
-                    pred = model(white, black)
-                    loss = loss_fn(pred, target)
-            except:
-                with torch.cuda.amp.autocast():
-                    pred = model(white, black)
-                    loss = loss_fn(pred, target)
-            scaler.scale(loss).backward()
-            scaler.step(opt)
-            scaler.update()
-            total+=loss.item()
-            count+=1
-        avg = total/max(1,count)
-        print(f"Epoch {epoch} loss {avg:.5f}")
-        if avg < best_loss:
-            best_loss=avg
+        model.train()
+        total = count = 0
+        for us_i, us_o, th_i, th_o, threats, cp, wdl in dl:
+            us_i, us_o = us_i.to(device), us_o.to(device)
+            th_i, th_o = th_i.to(device), th_o.to(device)
+            threats = threats.to(device)
+            cp, wdl = cp.to(device), wdl.to(device)
+
+            pred = model(us_i, us_o, th_i, th_o, threats)
+            p = torch.sigmoid(pred)                       # predicted win prob
+            q = torch.sigmoid(cp / NNUE_SCALE)            # teacher win prob
+
+            has_wdl = wdl >= 0.0
+            # blend teacher eval with the real game outcome where we have it
+            target = torch.where(has_wdl, args.lam * q + (1.0 - args.lam) * wdl, q)
+            loss = torch.nn.functional.mse_loss(p, target)
+
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+            total += loss.item()
+            count += 1
+
+        model.eval()
+        vtotal = vcount = 0
+        with torch.no_grad():
+            for us_i, us_o, th_i, th_o, threats, cp, wdl in vdl:
+                pred = model(us_i.to(device), us_o.to(device), th_i.to(device), th_o.to(device), threats.to(device))
+                q = torch.sigmoid(cp.to(device) / NNUE_SCALE)
+                vtotal += torch.nn.functional.mse_loss(torch.sigmoid(pred), q).item()
+                vcount += 1
+        sched.step()
+
+        tr = total / max(1, count)
+        va = vtotal / max(1, vcount)
+        print(f"epoch {epoch:3d}  train {tr:.6f}  val {va:.6f}  lr {sched.get_last_lr()[0]:.2e}")
+        # gate on VALIDATION loss - a train loss of 0.0 just means memorised
+        if va < best:
+            best = va
             Path(args.out).parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), args.out)
-            print(f"Saved best to {args.out}")
-        if epoch%5==0:
-            torch.save(model.state_dict(), f"{args.out}.epoch{epoch}.pt")
 
-    # Final save
-    torch.save(model.state_dict(), args.out)
-    export_binary(model, args.out.replace(".pt",".nnue"))
+    model.load_state_dict(torch.load(args.out))
+    export_binary(model, args.out.replace(".pt", ".nnue"))
+
 
 def export_binary(model, path):
-    QA=255
-    QB=64
-    import numpy as np
+    ft_w = np.clip(model.ft.weight.detach().cpu().numpy() * QA, -32767, 32767).astype(np.int16)
+    ft_b = np.clip(model.ft_bias.detach().cpu().numpy() * QA, -32767, 32767).astype(np.int16)
+    # C++ reads l1_weights_[in * HT2 + out] -> transpose from (out, in)
+    l1_w = np.clip(model.l1.weight.detach().cpu().numpy().T * QA, -32767, 32767).astype(np.int16)
+    l1_b = (model.l1.bias.detach().cpu().numpy() * QA * QB).astype(np.int32)
+    l2_w = np.clip(model.l2.weight.detach().cpu().numpy().flatten() * QB, -32767, 32767).astype(np.int16)
+    l2_b = np.int32(model.l2.bias.detach().cpu().numpy()[0] * QA * QB)
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as f:
-        ft_w = (model.ft.weight.detach().cpu().numpy()*QA).astype(np.int16)
-        ft_b = (model.ft.bias.detach().cpu().numpy()*QA).astype(np.int16)
-        l1_w = (model.l1.weight.detach().cpu().numpy()*QA).astype(np.int16)
-        l1_b = (model.l1.bias.detach().cpu().numpy()*QB*QA).astype(np.int32)
-        l2_w = (model.l2.weight.detach().cpu().numpy()*QB).astype(np.int16)
-        l2_b = (model.l2.bias.detach().cpu().numpy()*QB*QA).astype(np.int32)
+        f.write(MAGIC)
+        f.write(struct.pack("<IIIIIII", FT_SIZE, HT1, HT2, QA, QB, 1, THREAT_INPUTS))  # stm relative + threat inputs
         f.write(ft_w.tobytes())
         f.write(ft_b.tobytes())
         f.write(l1_w.tobytes())
         f.write(l1_b.tobytes())
         f.write(l2_w.tobytes())
-        f.write(l2_b.tobytes())
-    print(f"Exported binary NNUE to {path} size {Path(path).stat().st_size//1024//1024}MB")
+        f.write(np.int32(l2_b).tobytes())
+    print(f"exported {path} ({Path(path).stat().st_size / 1024:.0f} KiB)")
 
-if __name__=="__main__":
-    ap=argparse.ArgumentParser()
-    ap.add_argument("--dataset", default="datasets/games.jsonl")
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dataset", nargs="+", default=["datasets/diverse_sf18.jsonl"])
     ap.add_argument("--out", default="networks/nnue.pt")
-    ap.add_argument("--batch", type=int, default=256)
-    ap.add_argument("--epochs", type=int, default=20)
+    ap.add_argument("--batch", type=int, default=8192)
+    ap.add_argument("--epochs", type=int, default=30)
     ap.add_argument("--lr", type=float, default=1e-3)
-    args=ap.parse_args()
+    ap.add_argument("--lam", type=float, default=0.7, help="weight on teacher eval vs game result")
+    ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--workers", type=int, default=2)
+    args = ap.parse_args()
     train(args)
