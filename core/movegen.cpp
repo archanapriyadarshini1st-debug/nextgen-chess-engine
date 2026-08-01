@@ -1,173 +1,227 @@
 #include "movegen.h"
+#include "bitboard.h"
 #include <algorithm>
 
 namespace chess {
 namespace {
-bool on(int f, int r) { return f >= 0 && f < 8 && r >= 0 && r < 8; }
-int sq(int f, int r) { return square_of(f, r); }
 
-Piece mover_pawn(Color c) { return c == Color::White ? Piece::WP : Piece::BP; }
-Piece mover_knight(Color c) { return c == Color::White ? Piece::WN : Piece::BN; }
-Piece mover_bishop(Color c) { return c == Color::White ? Piece::WB : Piece::BB; }
-Piece mover_rook(Color c) { return c == Color::White ? Piece::WR : Piece::BR; }
-Piece mover_queen(Color c) { return c == Color::White ? Piece::WQ : Piece::BQ; }
-Piece mover_king(Color c) { return c == Color::White ? Piece::WK : Piece::BK; }
+constexpr int PT_PAWN = 1, PT_KNIGHT = 2, PT_BISHOP = 3, PT_ROOK = 4, PT_QUEEN = 5, PT_KING = 6;
 
-bool is_enemy(Piece p, Color c) { return p != Piece::None && piece_color(p) != c; }
+constexpr int SEE_VALUE[7] = { 0, 100, 320, 330, 500, 900, 20000 };
 
-void add_promos(MoveList& list, int from, int to, std::uint32_t base_flags, bool capture) {
-    if (capture) base_flags |= FLAG_CAPTURE;
-    list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 1));
-    list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 2));
-    list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 3));
-    list.push(Move::make(from, to, base_flags | FLAG_PROMOTION, 4));
+inline int type_of(Piece p) {
+    int i = piece_index(p);
+    return i < 0 ? 0 : (i % 6) + 1;
+}
+inline int piece_val(Piece p) { return SEE_VALUE[type_of(p)]; }
+
+inline void add_promos(MoveList& list, int from, int to, bool capture) {
+    const std::uint32_t base = FLAG_PROMOTION | (capture ? FLAG_CAPTURE : 0u);
+    list.push(Move::make(from, to, base, 4)); // queen first - helps ordering
+    list.push(Move::make(from, to, base, 3));
+    list.push(Move::make(from, to, base, 2));
+    list.push(Move::make(from, to, base, 1));
 }
 
-int piece_val(Piece p) {
-    switch(p){
-        case Piece::WP: case Piece::BP: return 100;
-        case Piece::WN: case Piece::BN: return 320;
-        case Piece::WB: case Piece::BB: return 330;
-        case Piece::WR: case Piece::BR: return 500;
-        case Piece::WQ: case Piece::BQ: return 900;
-        case Piece::WK: case Piece::BK: return 20000;
-        default: return 0;
-    }
-}
-
-} // anonymous
+} // anon
 
 void generate_moves(Position& pos, MoveList& list, bool captures_only) {
-    MoveList pseudo;
-    const auto& b = pos.board();
-    Color us = pos.side_to_move();
-    Color them = opposite(us);
-
-    for (int from = 0; from < 64; ++from) {
-        Piece p = b[from];
-        if (p == Piece::None || piece_color(p) != us) continue;
-        int f = file_of(from), r = rank_of(from);
-
-        if (p == mover_pawn(us)) {
-            int dir = us == Color::White ? 1 : -1;
-            int start_rank = us == Color::White ? 1 : 6;
-            int promo_rank = us == Color::White ? 6 : 1;
-            int ep_rank = us == Color::White ? 4 : 3; // 5th rank for white, 4th for black (0-indexed)
-            int next_r = r + dir;
-            if (!captures_only && on(f, next_r) && b[sq(f, next_r)] == Piece::None) {
-                int to = sq(f, next_r);
-                if (r == promo_rank) add_promos(pseudo, from, to, 0, false);
-                else pseudo.push(Move::make(from, to));
-                if (r == start_rank) {
-                    int jump_r = r + 2 * dir;
-                    if (on(f, jump_r) && b[sq(f, jump_r)] == Piece::None) pseudo.push(Move::make(from, sq(f, jump_r), FLAG_DOUBLE_PUSH));
-                }
-            }
-            for (int df : {-1, 1}) {
-                int nf = f + df;
-                int nr = r + dir;
-                if (!on(nf, nr)) continue;
-                int to = sq(nf, nr);
-                // En passant: only if pawn is on ep_rank and to == ep_square
-                if (pos.ep_square()>=0 && to == pos.ep_square() && r==ep_rank) {
-                    pseudo.push(Move::make(from, to, FLAG_CAPTURE | FLAG_EN_PASSANT));
-                } else if (is_enemy(b[to], us)) {
-                    if (r == promo_rank) add_promos(pseudo, from, to, 0, true);
-                    else pseudo.push(Move::make(from, to, FLAG_CAPTURE));
-                }
-            }
-        } else if (p == mover_knight(us)) {
-            static const int d[8][2] = {{1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2}};
-            for (auto& x : d) {
-                int nf = f + x[0], nr = r + x[1];
-                if (!on(nf, nr)) continue;
-                int to = sq(nf, nr);
-                if (b[to] == Piece::None) { if (!captures_only) pseudo.push(Move::make(from, to)); }
-                else if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
-            }
-        } else if (p == mover_bishop(us) || p == mover_rook(us) || p == mover_queen(us)) {
-            static const int bishop_dirs[4][2] = {{1,1},{1,-1},{-1,1},{-1,-1}};
-            static const int rook_dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-            const int (*dirs)[2] = (p == mover_bishop(us)) ? bishop_dirs : (p == mover_rook(us) ? rook_dirs : nullptr);
-            int n_dirs = p == mover_queen(us) ? 8 : 4;
-            int qdirs[8][2];
-            if (p == mover_queen(us)) {
-                for (int i = 0; i < 4; ++i) { qdirs[i][0] = bishop_dirs[i][0]; qdirs[i][1] = bishop_dirs[i][1]; qdirs[i + 4][0] = rook_dirs[i][0]; qdirs[i + 4][1] = rook_dirs[i][1]; }
-                dirs = qdirs;
-            }
-            for (int i = 0; i < n_dirs; ++i) {
-                int nf = f + dirs[i][0], nr = r + dirs[i][1];
-                while (on(nf, nr)) {
-                    int to = sq(nf, nr);
-                    if (b[to] == Piece::None) {
-                        if (!captures_only) pseudo.push(Move::make(from, to));
-                    } else {
-                        if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
-                        break;
-                    }
-                    nf += dirs[i][0]; nr += dirs[i][1];
-                }
-            }
-        } else if (p == mover_king(us)) {
-            static const int d[8][2] = {{1,1},{1,0},{1,-1},{0,1},{0,-1},{-1,1},{-1,0},{-1,-1}};
-            for (auto& x : d) {
-                int nf = f + x[0], nr = r + x[1];
-                if (!on(nf, nr)) continue;
-                int to = sq(nf, nr);
-                if (b[to] == Piece::None) { if (!captures_only) pseudo.push(Move::make(from, to)); }
-                else if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
-            }
-            if (!captures_only && !pos.in_check(us)) {
-                if (us == Color::White && from == 4) {
-                    if ((pos.castling_rights() & WHITE_KINGSIDE) && b[5] == Piece::None && b[6] == Piece::None && !pos.square_attacked(5, them) && !pos.square_attacked(6, them)) pseudo.push(Move::make(4, 6, FLAG_KING_CASTLE));
-                    if ((pos.castling_rights() & WHITE_QUEENSIDE) && b[3] == Piece::None && b[2] == Piece::None && b[1] == Piece::None && !pos.square_attacked(3, them) && !pos.square_attacked(2, them)) pseudo.push(Move::make(4, 2, FLAG_QUEEN_CASTLE));
-                }
-                if (us == Color::Black && from == 60) {
-                    if ((pos.castling_rights() & BLACK_KINGSIDE) && b[61] == Piece::None && b[62] == Piece::None && !pos.square_attacked(61, them) && !pos.square_attacked(62, them)) pseudo.push(Move::make(60, 62, FLAG_KING_CASTLE));
-                    if ((pos.castling_rights() & BLACK_QUEENSIDE) && b[59] == Piece::None && b[58] == Piece::None && b[57] == Piece::None && !pos.square_attacked(59, them) && !pos.square_attacked(58, them)) pseudo.push(Move::make(60, 58, FLAG_QUEEN_CASTLE));
-                }
-                // Chess960: king may start elsewhere, allow castling to file C/G if rook on A/H and rights
-                // Simplified: if Chess960 and king not on e1/e8, still allow king to move 2 squares toward rook file if path clear and not attacked
-            }
-        }
-    }
-
     list.clear();
-    for (int i = 0; i < pseudo.size; ++i) {
-        Move m = pseudo.moves[i];
-        if (pos.make_move(m)) {
-            if (!pos.in_check(opposite(pos.side_to_move()))) list.push(m);
-            pos.unmake_move();
+    MoveList pseudo;
+
+    const Color us = pos.side_to_move();
+    const Color them = opposite(us);
+    const int uc = static_cast<int>(us);
+    const Bitboard occ = pos.occupancy_all();
+    const Bitboard mine = pos.occupancy(us);
+    const Bitboard theirs = pos.occupancy(them);
+    const Bitboard targets = captures_only ? theirs : ~mine;
+
+    // ---- pawns ----
+    Bitboard pawns = pos.pieces(us, PT_PAWN);
+    const int push = (us == Color::White) ? 8 : -8;
+    const int startRank = (us == Color::White) ? 1 : 6;
+    const int promoRank = (us == Color::White) ? 6 : 1;
+    while (pawns) {
+        const int from = ::Bitboard::pop_lsb(pawns);
+        const int r = rank_of(from);
+        if (!captures_only) {
+            const int one = from + push;
+            if (one >= 0 && one < 64 && !((occ >> one) & 1ULL)) {
+                if (r == promoRank) add_promos(pseudo, from, one, false);
+                else {
+                    pseudo.push(Move::make(from, one));
+                    if (r == startRank) {
+                        const int two = one + push;
+                        if (!((occ >> two) & 1ULL)) pseudo.push(Move::make(from, two, FLAG_DOUBLE_PUSH));
+                    }
+                }
+            }
+        }
+        Bitboard atk = ::Bitboard::pawn_attacks[uc][from];
+        Bitboard caps = atk & theirs;
+        while (caps) {
+            const int to = ::Bitboard::pop_lsb(caps);
+            if (r == promoRank) add_promos(pseudo, from, to, true);
+            else pseudo.push(Move::make(from, to, FLAG_CAPTURE));
+        }
+        if (pos.ep_square() >= 0 && (atk & (1ULL << pos.ep_square())))
+            pseudo.push(Move::make(from, pos.ep_square(), FLAG_CAPTURE | FLAG_EN_PASSANT));
+    }
+
+    // ---- knights / king ----
+    auto leapers = [&](Bitboard bb, const uint64_t* table) {
+        while (bb) {
+            const int from = ::Bitboard::pop_lsb(bb);
+            Bitboard to_bb = table[from] & targets;
+            while (to_bb) {
+                const int to = ::Bitboard::pop_lsb(to_bb);
+                pseudo.push(Move::make(from, to, ((theirs >> to) & 1ULL) ? FLAG_CAPTURE : 0u));
+            }
+        }
+    };
+    leapers(pos.pieces(us, PT_KNIGHT), ::Bitboard::knight_attacks);
+    leapers(pos.pieces(us, PT_KING), ::Bitboard::king_attacks);
+
+    // ---- sliders via magic bitboards (no more loop-based ray walks) ----
+    auto sliders = [&](Bitboard bb, bool rookLike, bool bishopLike) {
+        while (bb) {
+            const int from = ::Bitboard::pop_lsb(bb);
+            Bitboard to_bb = 0;
+            if (rookLike)   to_bb |= ::Bitboard::rook_attacks(from, occ);
+            if (bishopLike) to_bb |= ::Bitboard::bishop_attacks(from, occ);
+            to_bb &= targets;
+            while (to_bb) {
+                const int to = ::Bitboard::pop_lsb(to_bb);
+                pseudo.push(Move::make(from, to, ((theirs >> to) & 1ULL) ? FLAG_CAPTURE : 0u));
+            }
+        }
+    };
+    sliders(pos.pieces(us, PT_BISHOP), false, true);
+    sliders(pos.pieces(us, PT_ROOK),   true,  false);
+    sliders(pos.pieces(us, PT_QUEEN),  true,  true);
+
+    // ---- castling ----
+    if (!captures_only) {
+        const int ksq = pos.king_square(us);
+        if (us == Color::White && ksq == 4 && !pos.in_check(us)) {
+            if ((pos.castling_rights() & WHITE_KINGSIDE) && !((occ >> 5) & 1ULL) && !((occ >> 6) & 1ULL)
+                && !pos.square_attacked(5, them) && !pos.square_attacked(6, them))
+                pseudo.push(Move::make(4, 6, FLAG_KING_CASTLE));
+            if ((pos.castling_rights() & WHITE_QUEENSIDE) && !((occ >> 3) & 1ULL) && !((occ >> 2) & 1ULL) && !((occ >> 1) & 1ULL)
+                && !pos.square_attacked(3, them) && !pos.square_attacked(2, them))
+                pseudo.push(Move::make(4, 2, FLAG_QUEEN_CASTLE));
+        }
+        if (us == Color::Black && ksq == 60 && !pos.in_check(us)) {
+            if ((pos.castling_rights() & BLACK_KINGSIDE) && !((occ >> 61) & 1ULL) && !((occ >> 62) & 1ULL)
+                && !pos.square_attacked(61, them) && !pos.square_attacked(62, them))
+                pseudo.push(Move::make(60, 62, FLAG_KING_CASTLE));
+            if ((pos.castling_rights() & BLACK_QUEENSIDE) && !((occ >> 59) & 1ULL) && !((occ >> 58) & 1ULL) && !((occ >> 57) & 1ULL)
+                && !pos.square_attacked(59, them) && !pos.square_attacked(58, them))
+                pseudo.push(Move::make(60, 58, FLAG_QUEEN_CASTLE));
         }
     }
+
+    // ---- legality filter: bitboard test, no make/unmake churn ----
+    for (int i = 0; i < pseudo.size; ++i)
+        if (pos.legal_pseudo(pseudo.moves[i])) list.push(pseudo.moves[i]);
 }
 
-// SEE - Static Exchange Evaluation
-int see(const Position& pos, Move m) {
-    const auto& b = pos.board();
-    int from = m.from(), to = m.to();
-    Piece moving = b[from];
-    Piece captured = b[to];
-    if (m.flags() & FLAG_EN_PASSANT) captured = (pos.side_to_move()==Color::White? Piece::BP: Piece::WP);
-    if (captured==Piece::None && !(m.flags() & FLAG_CAPTURE)) return 0;
-    int gain = piece_val(captured);
-    if (m.flags() & FLAG_PROMOTION) gain += piece_val(Piece::WQ) - piece_val(Piece::WP);
-    return gain - piece_val(moving)/10;
-}
-
+// ---------------------------------------------------------------------------
+// Real static exchange evaluation (swap-off algorithm) instead of the old
+// MVV-LVA approximation.
+// ---------------------------------------------------------------------------
 bool see_ge(const Position& pos, Move m, int threshold) {
-    return see(pos,m) >= threshold;
+    const int from = m.from(), to = m.to();
+    const Piece movingP = pos.piece_at(from);
+    if (movingP == Piece::None) return 0 >= threshold;
+
+    const bool isEp = (m.flags() & FLAG_EN_PASSANT) != 0;
+    Piece capturedP = isEp
+        ? (pos.side_to_move() == Color::White ? Piece::BP : Piece::WP)
+        : pos.piece_at(to);
+
+    int swap = piece_val(capturedP) - threshold;
+    if (m.flags() & FLAG_PROMOTION) {
+        // promotion also swaps the pawn for the promoted piece
+        swap += SEE_VALUE[PT_QUEEN] - SEE_VALUE[PT_PAWN];
+    }
+    if (swap < 0) return false;
+
+    int nextVal = (m.flags() & FLAG_PROMOTION) ? SEE_VALUE[PT_QUEEN] : piece_val(movingP);
+    swap = nextVal - swap;
+    if (swap <= 0) return true;
+
+    Bitboard occ = pos.occupancy_all();
+    occ ^= (1ULL << from);
+    occ |= (1ULL << to);
+    if (isEp) occ &= ~(1ULL << (pos.side_to_move() == Color::White ? to - 8 : to + 8));
+
+    Color stm = opposite(pos.side_to_move());
+    Bitboard attackers = pos.attackers_to(to, occ) & occ;
+    bool result = true;
+
+    const Bitboard bishopsQ = pos.pieces(Piece::WB) | pos.pieces(Piece::BB)
+                            | pos.pieces(Piece::WQ) | pos.pieces(Piece::BQ);
+    const Bitboard rooksQ   = pos.pieces(Piece::WR) | pos.pieces(Piece::BR)
+                            | pos.pieces(Piece::WQ) | pos.pieces(Piece::BQ);
+
+    while (true) {
+        Bitboard myAtt = attackers & pos.occupancy(stm) & occ;
+        if (!myAtt) break;
+
+        // pick the least valuable attacker
+        int pt = 0;
+        Bitboard bb = 0;
+        for (int t = PT_PAWN; t <= PT_KING; ++t) {
+            bb = myAtt & pos.pieces(stm, t);
+            if (bb) { pt = t; break; }
+        }
+        if (!pt) break;
+
+        const int sq = ::Bitboard::lsb_index(bb);
+        occ ^= (1ULL << sq);
+
+        // x-ray: recompute sliding attackers through the vacated square
+        if (pt == PT_PAWN || pt == PT_BISHOP || pt == PT_QUEEN)
+            attackers |= ::Bitboard::bishop_attacks(to, occ) & bishopsQ;
+        if (pt == PT_ROOK || pt == PT_QUEEN)
+            attackers |= ::Bitboard::rook_attacks(to, occ) & rooksQ;
+        attackers &= occ;
+
+        result = !result;
+        stm = opposite(stm);
+
+        swap = SEE_VALUE[pt] - swap;
+        if (swap < 0) {
+            // king capture is only legal if the square is then undefended
+            if (pt == PT_KING && (attackers & pos.occupancy(stm) & occ)) result = !result;
+            break;
+        }
+    }
+    return result;
+}
+
+int see(const Position& pos, Move m) {
+    if (!(m.flags() & FLAG_CAPTURE) && !(m.flags() & FLAG_PROMOTION)) return 0;
+    // binary search the exact SEE value using see_ge - cheap enough and exact.
+    int lo = -2000, hi = 2000;
+    while (lo < hi) {
+        const int mid = lo + (hi - lo + 1) / 2;
+        if (see_ge(pos, m, mid)) lo = mid; else hi = mid - 1;
+    }
+    return lo;
 }
 
 uint64_t perft(Position& pos, int depth) {
-    if (depth==0) return 1;
+    if (depth == 0) return 1;
     MoveList list;
     generate_moves(pos, list, false);
-    if (depth==1) return list.size;
-    uint64_t nodes=0;
-    for (int i=0;i<list.size;++i) {
+    if (depth == 1) return list.size;
+    uint64_t nodes = 0;
+    for (int i = 0; i < list.size; ++i) {
         if (!pos.make_move(list.moves[i])) continue;
-        nodes += perft(pos, depth-1);
+        nodes += perft(pos, depth - 1);
         pos.unmake_move();
     }
     return nodes;
