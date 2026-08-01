@@ -22,7 +22,9 @@ def llr(w, l, d, elo0=0.0, elo1=5.0):
     n = w + l + d
     if n == 0 or w + l == 0:
         return 0.0
-    pw, pl, pd = w / n, l / n, d / n
+    # Jeffreys smoothing keeps decisive batches informative instead of making
+    # variance exactly zero and returning a bogus LLR of 0.
+    pw, pl, pd = (w + 0.5) / (n + 1.5), (l + 0.5) / (n + 1.5), (d + 0.5) / (n + 1.5)
     score = pw + 0.5 * pd
     var = pw * (1 - score) ** 2 + pd * (0.5 - score) ** 2 + pl * score ** 2
     if var <= 0:
