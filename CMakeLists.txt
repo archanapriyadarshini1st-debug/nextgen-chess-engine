@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BUILD_TESTS "Build tests" ON)
 
 add_library(chesscore
+    core/bitboard.cpp
     core/position.cpp
     core/movegen.cpp
     core/zobrist.cpp
@@ -16,6 +17,7 @@ add_library(chesscore
     search/tt.cpp
     search/heuristics.cpp
     evaluation/eval.cpp
+    evaluation/stockfish_nnue.cpp
     nnue/nnue.cpp
     uci/uci.cpp
     logging/game_log.cpp

@@ -480,9 +480,12 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
         if (time_up()) break;
         bool accepted = false;
         std::int64_t window = depth >= 4 ? 50 : INF;
+        int widenings = 0;
         while (!accepted) {
-            Score alpha0 = depth >= 4 ? previous - window : -INF;
-            Score beta0 = depth >= 4 ? previous + window : INF;
+            // Clamp aspiration bounds. Unclamped values could slip past both the
+            // fail-low and fail-high checks and leave the root with no move at all.
+            Score alpha0 = depth >= 4 ? (Score)std::max<std::int64_t>(-INF, (std::int64_t)previous - window) : -INF;
+            Score beta0  = depth >= 4 ? (Score)std::min<std::int64_t>( INF, (std::int64_t)previous + window) : INF;
             Score alpha = alpha0, beta = beta0;
 
             Move tt_move{};
@@ -515,30 +518,42 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                     if (ev.score > local_best) { local_best = ev.score; local_move = ev.move; }
                     local_seldepth = std::max(local_seldepth, ev.seldepth);
                 }
-                best = local_move;
-                best_score = local_best;
-                previous = local_best;
+                if (!local_move.is_null()) {
+                    best = local_move;
+                    best_score = local_best;
+                    previous = local_best;
+                }
                 seldepth_ = std::max(seldepth_, local_seldepth);
                 accepted = true;
             } else {
                 Score local_best = -INF;
                 Move local_move{};
+                int searched = 0;
+                bool aborted = false;
                 for (int i = 0; i < root.size; ++i) {
                     Move m = root.moves[i];
                     if (!pos.make_move(m)) continue;
                     Score score = -negamax(pos, depth - 1, -beta, -alpha, 1, false);
                     pos.unmake_move();
-                    if (score > local_best) { local_best = score; local_move = m; }
+                    // Always adopt the first searched move. A score of exactly -INF
+                    // used to fail the '>' test and leave local_move null, which the
+                    // UCI layer then emitted as 'bestmove 0000' and forfeited the game.
+                    if (searched == 0 || score > local_best) { local_best = score; local_move = m; }
+                    ++searched;
                     if (score > alpha) alpha = score;
                     if (alpha >= beta) break;
-                    if (time_up()) break;
+                    if (time_up()) { aborted = true; break; }
                 }
 
-                if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
-                if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
-                best = local_move;
-                best_score = local_best;
-                previous = local_best;
+                if (searched == 0) { accepted = true; break; }
+                if (!aborted && depth >= 4 && widenings < 5 && local_best <= alpha0) { previous = local_best; window *= 2; ++widenings; continue; }
+                if (!aborted && depth >= 4 && widenings < 5 && local_best >= beta0) { previous = local_best; window *= 2; ++widenings; continue; }
+                // Never overwrite a completed iteration's move with a null or partial one.
+                if (!local_move.is_null() && (!aborted || best.is_null())) {
+                    best = local_move;
+                    best_score = local_best;
+                    previous = local_best;
+                }
                 accepted = true;
             }
         }
@@ -546,6 +561,14 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
         r.score = best_score;
         r.depth = depth;
         if (time_up()) break;
+    }
+
+    // Final safety net: a legal move exists at this node, so always return one.
+    if (r.best_move.is_null()) {
+        for (int i = 0; i < root.size; ++i) {
+            if (pos.make_move(root.moves[i])) { pos.unmake_move(); r.best_move = root.moves[i]; break; }
+        }
+        if (r.score <= -INF || r.score >= INF) r.score = 0;
     }
 
     r.nodes = nodes_;
