@@ -17,6 +17,7 @@ constexpr int NNUE_PIECE_TYPES  = 10;
 constexpr int NNUE_FT_SIZE      = NNUE_KING_BUCKETS * NNUE_PIECE_TYPES * 64; // 5120
 constexpr int NNUE_HT1   = 256;
 constexpr int NNUE_HT2   = 32;
+constexpr int NNUE_THREAT_INPUTS = 2;
 constexpr int NNUE_SCALE = 400;
 constexpr int QA = 255;
 constexpr int QB = 64;
@@ -25,10 +26,11 @@ constexpr int QB = 64;
 // and the engine agree on dimensions AND on the accumulator ordering.
 #pragma pack(push, 1)
 struct NNUEHeader {
-    char     magic[8];      // "NGCEv2\0\0"
+    char     magic[8];      // "NGCEv3\0\0"
     uint32_t ft, ht1, ht2;
     uint32_t qa, qb;
     uint32_t stm_relative;  // 1 = accumulators are ordered (side-to-move, other)
+    uint32_t threat_inputs;  // NNUE_THREAT_INPUTS
 };
 #pragma pack(pop)
 

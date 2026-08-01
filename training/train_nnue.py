@@ -35,12 +35,13 @@ from torch.utils.data import DataLoader, Dataset
 KING_BUCKETS = 8
 PIECE_TYPES = 10
 FT_SIZE = KING_BUCKETS * PIECE_TYPES * 64      # 5120
+THREAT_INPUTS = 2
 HT1 = 256
 HT2 = 32
 QA = 255
 QB = 64
 NNUE_SCALE = 400.0
-MAGIC = b"NGCEv2\0\0"
+MAGIC = b"NGCEv3\0\0"
 
 
 # --------------------------------------------------------------------------
@@ -69,9 +70,20 @@ def fen_to_features(fen):
         tb = (0 if piece.color == chess.BLACK else 5) + t
         black.append(((bk ^ 56) // 8) * 640 + tb * 64 + (sq ^ 56))
 
-    if board.turn == chess.WHITE:
-        return white, black
-    return black, white
+    us, them = (white, black) if board.turn == chess.WHITE else (black, white)
+    us_color = board.turn
+    them_color = not us_color
+    enemy_threats = 0
+    own_threats = 0
+    for sq, piece in board.piece_map().items():
+        if piece.piece_type == chess.KING:
+            continue
+        if piece.color == them_color and board.attackers(us_color, sq):
+            enemy_threats += 1
+        if piece.color == us_color and board.attackers(them_color, sq):
+            own_threats += 1
+    threats = [min(255, enemy_threats * 255 // 8), min(255, own_threats * 255 // 8)]
+    return us, them, threats
 
 
 def result_to_wdl(result, stm_is_white):
@@ -112,13 +124,14 @@ class GameDataset(Dataset):
                     if feats is None or not feats[0] and not feats[1]:
                         skipped += 1
                         continue
-                    us, them = feats
+                    us, them, threats = feats
                     stm_white = fen.split()[1] == "w"
                     wdl = result_to_wdl(e.get("result", "*"), stm_white)
                     self.samples.append(
                         (
                             np.asarray(us, dtype=np.int64),
                             np.asarray(them, dtype=np.int64),
+                            np.asarray(threats, dtype=np.float32),
                             float(np.clip(cp, -3000, 3000)),
                             -1.0 if wdl is None else wdl,
                         )
@@ -135,15 +148,16 @@ class GameDataset(Dataset):
 def collate(batch):
     """Pack variable length index lists into EmbeddingBag (input, offsets)."""
     us_idx, us_off, them_idx, them_off = [], [], [], []
-    cps, wdls = [], []
+    threats, cps, wdls = [], [], []
     u = t = 0
-    for us, them, cp, wdl in batch:
+    for us, them, thr, cp, wdl in batch:
         us_off.append(u)
         them_off.append(t)
         us_idx.append(us)
         them_idx.append(them)
         u += len(us)
         t += len(them)
+        threats.append(thr)
         cps.append(cp)
         wdls.append(wdl)
     cat = lambda xs: torch.from_numpy(np.concatenate(xs)) if xs else torch.zeros(0, dtype=torch.long)
@@ -152,6 +166,7 @@ def collate(batch):
         torch.tensor(us_off, dtype=torch.long),
         cat(them_idx),
         torch.tensor(them_off, dtype=torch.long),
+        torch.tensor(np.asarray(threats), dtype=torch.float32),
         torch.tensor(cps, dtype=torch.float32).unsqueeze(1),
         torch.tensor(wdls, dtype=torch.float32).unsqueeze(1),
     )
@@ -162,14 +177,14 @@ class NNUE(nn.Module):
         super().__init__()
         self.ft = nn.EmbeddingBag(FT_SIZE, HT1, mode="sum", sparse=False)
         self.ft_bias = nn.Parameter(torch.zeros(HT1))
-        self.l1 = nn.Linear(HT1 * 2, HT2)
+        self.l1 = nn.Linear(HT1 * 2 + THREAT_INPUTS, HT2)
         self.l2 = nn.Linear(HT2, 1)
         nn.init.normal_(self.ft.weight, std=0.01)
 
-    def forward(self, us_idx, us_off, them_idx, them_off):
+    def forward(self, us_idx, us_off, them_idx, them_off, threats):
         us = torch.clamp(self.ft(us_idx, us_off) + self.ft_bias, 0.0, 1.0)
         them = torch.clamp(self.ft(them_idx, them_off) + self.ft_bias, 0.0, 1.0)
-        x = torch.cat([us, them], dim=1)          # side-to-move FIRST
+        x = torch.cat([us, them, threats / 255.0], dim=1)  # stm FIRST + threats
         x = torch.clamp(self.l1(x), 0.0, 1.0)
         return self.l2(x)                          # stm-relative, in eval/400 units
 
@@ -204,12 +219,13 @@ def train(args):
     for epoch in range(args.epochs):
         model.train()
         total = count = 0
-        for us_i, us_o, th_i, th_o, cp, wdl in dl:
+        for us_i, us_o, th_i, th_o, threats, cp, wdl in dl:
             us_i, us_o = us_i.to(device), us_o.to(device)
             th_i, th_o = th_i.to(device), th_o.to(device)
+            threats = threats.to(device)
             cp, wdl = cp.to(device), wdl.to(device)
 
-            pred = model(us_i, us_o, th_i, th_o)
+            pred = model(us_i, us_o, th_i, th_o, threats)
             p = torch.sigmoid(pred)                       # predicted win prob
             q = torch.sigmoid(cp / NNUE_SCALE)            # teacher win prob
 
@@ -228,8 +244,8 @@ def train(args):
         model.eval()
         vtotal = vcount = 0
         with torch.no_grad():
-            for us_i, us_o, th_i, th_o, cp, wdl in vdl:
-                pred = model(us_i.to(device), us_o.to(device), th_i.to(device), th_o.to(device))
+            for us_i, us_o, th_i, th_o, threats, cp, wdl in vdl:
+                pred = model(us_i.to(device), us_o.to(device), th_i.to(device), th_o.to(device), threats.to(device))
                 q = torch.sigmoid(cp.to(device) / NNUE_SCALE)
                 vtotal += torch.nn.functional.mse_loss(torch.sigmoid(pred), q).item()
                 vcount += 1
@@ -260,7 +276,7 @@ def export_binary(model, path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as f:
         f.write(MAGIC)
-        f.write(struct.pack("<IIIIII", FT_SIZE, HT1, HT2, QA, QB, 1))  # 1 = stm relative
+        f.write(struct.pack("<IIIIIII", FT_SIZE, HT1, HT2, QA, QB, 1, THREAT_INPUTS))  # stm relative + threat inputs
         f.write(ft_w.tobytes())
         f.write(ft_b.tobytes())
         f.write(l1_w.tobytes())
