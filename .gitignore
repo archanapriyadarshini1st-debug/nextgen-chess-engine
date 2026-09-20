@@ -1,6 +1,13 @@
 build/
 out/
+bin/
 .cache/
+networks/nnue.nnue
+*.nnue
+!networks/chunks/
+.composio
+.env
+*.key
 *.o
 *.obj
 *.exe
