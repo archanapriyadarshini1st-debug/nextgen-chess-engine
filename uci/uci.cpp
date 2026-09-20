@@ -3,9 +3,12 @@
 #include "../tb/syzygy.h"
 #include "../opening/book.h"
 #include "../nnue/nnue.h"
+#include "../evaluation/eval.h"
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <algorithm>
+#include <vector>
 
 namespace chess {
 namespace {
@@ -117,7 +120,11 @@ void UCI::handle_setoption(const std::string& line) {
     } else if (name == "SyzygyPath") {
         SyzygyTablebase::init(value);
     } else if (name == "BookFile") {
-        book_.load_polyglot(value);
+        if (value.size() >= 4 && value.substr(value.size()-4)==".bin") book_.load_polyglot(value);
+        else book_.load_text(value);
+        use_book_ = true;
+    } else if (name == "ExperienceFile") {
+        if (book_.load_text(value)) use_book_ = true;
     } else if (name == "NNUEFile") {
         nnue_.load(value);
     } else if (name == "OwnBook") {
@@ -226,6 +233,8 @@ void UCI::handle_go(const std::string& line) {
 }
 
 int UCI::loop() {
+    std::ios::sync_with_stdio(false);
+    std::cout.setf(std::ios::unitbuf); // UCI must flush every line over a pipe
     pos_.set_startpos();
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -237,6 +246,7 @@ int UCI::loop() {
             std::cout << "option name SyzygyPath type string default <empty>\n";
             std::cout << "option name SyzygyProbeDepth type spin default 1 min 1 max 100\n";
             std::cout << "option name BookFile type string default <empty>\n";
+            std::cout << "option name ExperienceFile type string default datasets/experience_book.txt\n";
             std::cout << "option name NNUEFile type string default <empty>\n";
             std::cout << "option name OwnBook type check default false\n";
             std::cout << "option name MultiPV type spin default 1 min 1 max 5\n";
@@ -248,6 +258,22 @@ int UCI::loop() {
             std::cout << "option name UCI_Chess960 type check default false\n";
             std::cout << "uciok\n";
         } else if (line == "isready") {
+            static bool experience_tried=false;
+            if (!experience_tried) {
+                experience_tried=true;
+                const char* paths[] = {
+                    "datasets/experience_book.txt",
+                    "/home/user/nextgen-chess-engine/datasets/experience_book.txt",
+                    "experience_book.txt"
+                };
+                for (auto pth: paths) {
+                    if (book_.load_text(pth)) {
+                        use_book_ = true;
+                        std::cout << "info string experience book loaded from " << pth << "\n";
+                        break;
+                    }
+                }
+            }
             std::cout << "readyok\n";
         } else if (line.rfind("setoption", 0) == 0) {
             handle_setoption(line);
@@ -281,6 +307,9 @@ int UCI::loop() {
             break;
         } else if (line=="d") {
             std::cout << pos_.fen() << "\n";
+        } else if (line=="eval") {
+            Score sc = evaluate_handcrafted(pos_);
+            std::cout << "info string classical_cp " << sc << " fen " << pos_.fen() << "\n";
         }
     }
     return 0;
