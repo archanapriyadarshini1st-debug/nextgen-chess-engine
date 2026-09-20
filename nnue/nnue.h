@@ -2,6 +2,7 @@
 #include "../core/position.h"
 #include <string>
 #include <array>
+#include <vector>
 
 namespace chess {
 
