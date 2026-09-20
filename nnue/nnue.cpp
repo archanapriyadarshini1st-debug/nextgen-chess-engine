@@ -10,17 +10,25 @@
 namespace chess {
 
 int NNUE::make_feature(Color perspective, int kingSq, Piece p, int pieceSq) {
-    // HalfKP: king square perspective, piece square mirrored for black
-    int king = (perspective==Color::White? kingSq : kingSq ^ 56);
-    int pcSq = (perspective==Color::White? pieceSq : pieceSq ^ 56);
-    int pIdx = piece_index(p);
-    // Normalize: treat white pieces perspective: own pieces vs enemy pieces with different offsets
-    // Simplified mapping: (pIdx*64 + pcSq) * 64? Actually 41024 = 64*10*64? Let's use 10 piece types *64 squares *64 king squares /2?
-    // For simplicity we use stockfish-like HalfKA: pieceType*64 + square, offset by king bucket
-    int bucket = king / 8; // 8 buckets
-    int feature = bucket * 640 + pIdx * 64 + pcSq;
-    // clamp
-    if (feature>=NNUE_FT_SIZE) feature = feature % NNUE_FT_SIZE;
+    // HalfKP matching training/train_nnue.py:
+    // 10 types: own P,N,B,R,Q then enemy P,N,B,R,Q. Kings are not features.
+    if (p == Piece::None || p == Piece::WK || p == Piece::BK) return -1;
+    int king = (perspective == Color::White ? kingSq : kingSq ^ 56);
+    int pcSq = (perspective == Color::White ? pieceSq : pieceSq ^ 56);
+    bool own = (perspective == Color::White) ? is_white(p) : is_black(p);
+    int pt = 0;
+    switch (p) {
+        case Piece::WP: case Piece::BP: pt = 0; break;
+        case Piece::WN: case Piece::BN: pt = 1; break;
+        case Piece::WB: case Piece::BB: pt = 2; break;
+        case Piece::WR: case Piece::BR: pt = 3; break;
+        case Piece::WQ: case Piece::BQ: pt = 4; break;
+        default: return -1;
+    }
+    int type = (own ? 0 : 5) + pt;
+    int bucket = king / 8;
+    int feature = bucket * 640 + type * 64 + pcSq;
+    if (feature < 0 || feature >= NNUE_FT_SIZE) return -1;
     return feature;
 }
 
@@ -42,21 +50,18 @@ bool NNUE::load(const std::string& path) {
         in.read(reinterpret_cast<char*>(l1_bias_.data()), l1_bias_.size()*sizeof(int32_t));
         in.read(reinterpret_cast<char*>(l2_weights_.data()), l2_weights_.size()*sizeof(int16_t));
         in.read(reinterpret_cast<char*>(&l2_bias_), sizeof(int32_t));
-        loaded_ = in.gcount()>0 || !in.fail();
+        loaded_ = static_cast<bool>(in) && in.gcount() == static_cast<std::streamsize>(sizeof(int32_t));
     } catch (...) {
         loaded_=false;
     }
     if (!loaded_) {
-        // fallback: initialize with Xavier small values for testing
-        feature_weights_.assign(NNUE_FT_SIZE*NNUE_HT1, 0);
-        feature_bias_.assign(NNUE_HT1, 0);
-        l1_weights_.assign(NNUE_HT1*2*NNUE_HT2, 0);
-        l1_bias_.assign(NNUE_HT2, 0);
-        l2_weights_.assign(NNUE_HT2, 64);
+        feature_weights_.clear();
+        feature_bias_.clear();
+        l1_weights_.clear();
+        l1_bias_.clear();
+        l2_weights_.clear();
         l2_bias_=0;
-        for (int i=0;i<(int)feature_weights_.size();++i) feature_weights_[i]= (i%7)-3;
-        for (int i=0;i<NNUE_HT1;++i) feature_bias_[i]=1;
-        loaded_=true; // mark as loaded with random weights
+        return false; // never pretend random weights are a trained net
     }
     return loaded_;
 }
