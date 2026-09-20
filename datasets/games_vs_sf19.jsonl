@@ -182,3 +182,19 @@
 {"game_id": "g000062", "our_white": false, "opening": "e2e4 e7e5", "result": "1-0", "our_result": "loss", "ply": 23, "termination": "CHECKMATE", "missed": 4, "blunders": 3}
 {"game_id": "g000063", "our_white": true, "opening": "e2e4 c7c5", "result": "0-1", "our_result": "loss", "ply": 48, "termination": "CHECKMATE", "missed": 17, "blunders": 4}
 {"game_id": "g000064", "our_white": false, "opening": "e2e4 e7e6", "result": "1-0", "our_result": "loss", "ply": 51, "termination": "CHECKMATE", "missed": 16, "blunders": 2}
+{"game_id": "g000065", "our_white": true, "opening": "e2e4 c7c6", "result": "0-1", "our_result": "loss", "ply": 44, "termination": "CHECKMATE", "missed": 18, "blunders": 2}
+{"game_id": "g000066", "our_white": false, "opening": "e2e4 d7d5", "result": "1-0", "our_result": "loss", "ply": 65, "termination": "CHECKMATE", "missed": 24, "blunders": 2}
+{"game_id": "g000067", "our_white": true, "opening": "d2d4 d7d5", "result": "0-1", "our_result": "loss", "ply": 76, "termination": "CHECKMATE", "missed": 24, "blunders": 2}
+{"game_id": "g000068", "our_white": false, "opening": "d2d4 g8f6", "result": "1-0", "our_result": "loss", "ply": 57, "termination": "CHECKMATE", "missed": 20, "blunders": 2}
+{"game_id": "g000069", "our_white": true, "opening": "d2d4 g8f6 c2c4 e7e6", "result": "0-1", "our_result": "loss", "ply": 46, "termination": "CHECKMATE", "missed": 16, "blunders": 2}
+{"game_id": "g000070", "our_white": false, "opening": "d2d4 g8f6 c2c4 g7g6", "result": "1-0", "our_result": "loss", "ply": 63, "termination": "CHECKMATE", "missed": 23, "blunders": 3}
+{"game_id": "g000071", "our_white": true, "opening": "g1f3 d7d5", "result": "0-1", "our_result": "loss", "ply": 34, "termination": "CHECKMATE", "missed": 14, "blunders": 5}
+{"game_id": "g000072", "our_white": false, "opening": "c2c4 e7e5", "result": "1-0", "our_result": "loss", "ply": 65, "termination": "CHECKMATE", "missed": 28, "blunders": 2}
+{"game_id": "g000073", "our_white": true, "opening": "e2e4 e7e5 g1f3 b8c6 f1b5", "result": "0-1", "our_result": "loss", "ply": 46, "termination": "CHECKMATE", "missed": 15, "blunders": 2}
+{"game_id": "g000074", "our_white": false, "opening": "e2e4 c7c5 g1f3 d7d6 d2d4", "result": "1-0", "our_result": "loss", "ply": 19, "termination": "CHECKMATE", "missed": 3, "blunders": 2}
+{"game_id": "g000075", "our_white": true, "opening": "e2e4 e7e5 g1f3 b8c6 d2d4", "result": "0-1", "our_result": "loss", "ply": 44, "termination": "CHECKMATE", "missed": 14, "blunders": 2}
+{"game_id": "g000076", "our_white": false, "opening": "d2d4 d7d5 c2c4 e7e6", "result": "1-0", "our_result": "loss", "ply": 49, "termination": "CHECKMATE", "missed": 15, "blunders": 3}
+{"game_id": "g000077", "our_white": true, "opening": "e2e4 g8f6", "result": "0-1", "our_result": "loss", "ply": 34, "termination": "CHECKMATE", "missed": 11, "blunders": 2}
+{"game_id": "g000078", "our_white": false, "opening": "g1f3 g8f6", "result": "1-0", "our_result": "loss", "ply": 45, "termination": "CHECKMATE", "missed": 14, "blunders": 2}
+{"game_id": "g000079", "our_white": true, "opening": "e2e4 e7e5 g1f3 g8f6", "result": "0-1", "our_result": "loss", "ply": 30, "termination": "CHECKMATE", "missed": 11, "blunders": 2}
+{"game_id": "g000080", "our_white": false, "opening": "d2d4 d7d5 g1f3 g8f6", "result": "1-0", "our_result": "loss", "ply": 57, "termination": "CHECKMATE", "missed": 18, "blunders": 3}
