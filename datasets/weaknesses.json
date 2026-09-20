@@ -1,89 +1,89 @@
 {
-  "updated": "2026-09-20T05:04:39Z",
-  "games": 200,
+  "updated": "2026-09-20T05:27:20Z",
+  "games": 500,
   "results": {
-    "loss": 197,
-    "draw": 3
+    "loss": 496,
+    "draw": 4
   },
-  "missed_moves": 3191,
+  "missed_moves": 7755,
   "by_phase": {
     "opening": {
-      "moves": 1245,
-      "avg_cp_loss": 179.35823293172692,
-      "blunders": 191
+      "moves": 2932,
+      "avg_cp_loss": 175.45907230559345,
+      "blunders": 439
     },
     "middlegame": {
-      "moves": 1920,
-      "avg_cp_loss": 896.3296875,
-      "blunders": 280
+      "moves": 4773,
+      "avg_cp_loss": 902.0532160067044,
+      "blunders": 726
     },
     "endgame": {
-      "moves": 26,
-      "avg_cp_loss": 2069.076923076923,
-      "blunders": 7
+      "moves": 50,
+      "avg_cp_loss": 1809.28,
+      "blunders": 13
     }
   },
   "blunders_by_piece": {
-    "N": 661,
-    "P": 898,
-    "Q": 293,
-    "K": 412,
-    "B": 474,
-    "R": 453
+    "N": 1616,
+    "P": 2112,
+    "Q": 733,
+    "K": 1087,
+    "B": 1111,
+    "R": 1096
   },
   "top_reasons": [
     [
       "positional improvement",
-      2036
+      4953
     ],
     [
       "develops a piece",
-      360
+      848
     ],
     [
       "occupies centre",
-      336
+      751
     ],
     [
       "you pushed a wing pawn instead",
-      169
+      426
     ],
     [
       "castles (king safety)",
-      38
+      136
     ],
     [
       "occupies centre; you pushed a wing pawn instead",
-      37
-    ],
-    [
-      "develops a piece; you pushed a wing pawn instead",
-      29
+      73
     ],
     [
       "gives check; forcing; you missed a check",
-      19
+      55
+    ],
+    [
+      "develops a piece; you pushed a wing pawn instead",
+      53
     ],
     [
       "occupies centre; develops a piece",
-      18
+      49
     ],
     [
       "wins P; you missed a capture",
-      9
+      35
     ],
     [
       "wins P; occupies centre; you missed a capture",
-      9
+      26
     ],
     [
-      "wins b",
-      7
+      "wins p; you missed a capture",
+      22
     ]
   ],
   "severity": {
-    "inaccuracy": 2102,
-    "blunder": 478,
-    "mistake": 611
+    "inaccuracy": 5145,
+    "blunder": 1178,
+    "mistake": 1432
   }
 }
