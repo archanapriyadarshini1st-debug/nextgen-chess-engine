@@ -4,6 +4,7 @@
 #include <random>
 #include <cstring>
 #include <algorithm>
+#include <cctype>
 
 namespace chess {
 namespace {
@@ -91,9 +92,27 @@ bool OpeningBook::load_text(const std::string& path) {
     while (std::getline(in, line)) {
         if (line.empty() || line[0] == '#') continue;
         std::istringstream ss(line);
-        std::string fen, move_s; int weight = 1;
-        if (!(ss >> fen >> move_s)) continue;
-        ss >> weight;
+        std::vector<std::string> toks;
+        std::string t;
+        while (ss >> t) toks.push_back(t);
+        if (toks.size() < 2) continue;
+        int weight = 1;
+        std::string move_s = toks.back();
+        size_t fen_end = toks.size() - 1;
+        // last token may be weight
+        bool last_is_int = !toks.back().empty() &&
+            (std::isdigit(static_cast<unsigned char>(toks.back()[0])) ||
+             (toks.back()[0]=='-' && toks.back().size()>1));
+        if (last_is_int && toks.size() >= 3) {
+            try { weight = std::stoi(toks.back()); } catch (...) { weight = 1; }
+            move_s = toks[toks.size()-2];
+            fen_end = toks.size() - 2;
+        }
+        std::string fen;
+        for (size_t i=0;i<fen_end;++i) {
+            if (i) fen += ' ';
+            fen += toks[i];
+        }
         Position pos; pos.set_fen(fen);
         entries_[pos.zobrist()].push_back({parse_move_text(move_s), static_cast<std::uint16_t>(std::max(1, weight)), 0});
     }
