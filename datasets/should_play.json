@@ -1,0 +1,82 @@
+[
+  {
+    "name": "startpos",
+    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "nextgen": "d2d4",
+    "sf19": "e2e4",
+    "match": false,
+    "sf_cp_white": 32
+  },
+  {
+    "name": "after e4",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "nextgen": "b8c6",
+    "sf19": "c7c5",
+    "match": false,
+    "sf_cp_white": 25
+  },
+  {
+    "name": "Italian",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "nextgen": "f3g5",
+    "sf19": "d2d3",
+    "match": false,
+    "sf_cp_white": 21
+  },
+  {
+    "name": "Sicilian",
+    "fen": "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3",
+    "nextgen": "b1c3",
+    "sf19": "d2d4",
+    "match": false,
+    "sf_cp_white": 32
+  },
+  {
+    "name": "KID",
+    "fen": "rnbq1rk1/ppppppbp/5np1/8/2PPP3/2N5/PP3PPP/R1BQKBNR w KQ - 0 5",
+    "nextgen": "e4e5",
+    "sf19": "f1e2",
+    "match": false,
+    "sf_cp_white": 51
+  },
+  {
+    "name": "hanging queen (from losses)",
+    "fen": "rnb1kbnr/ppp1pppp/8/3q4/8/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 3",
+    "nextgen": "c8g4",
+    "sf19": "c8g4",
+    "match": true,
+    "sf_cp_white": 51
+  },
+  {
+    "name": "should castle",
+    "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 6",
+    "nextgen": "f3g5",
+    "sf19": "c1g5",
+    "match": false,
+    "sf_cp_white": 44
+  },
+  {
+    "name": "endgame KPk",
+    "fen": "8/8/8/4k3/8/4K3/4P3/8 w - - 0 1",
+    "nextgen": "e3f2",
+    "sf19": "e3d3",
+    "match": false,
+    "sf_cp_white": 6
+  },
+  {
+    "name": "mate in 1",
+    "fen": "6k1/5ppp/8/8/8/8/5PPP/6RK w - - 0 1",
+    "nextgen": "g1d1",
+    "sf19": "g1a1",
+    "match": false,
+    "sf_cp_white": 658
+  },
+  {
+    "name": "middlegame tactics",
+    "fen": "r1bqr1k1/pp3pbp/2np1np1/2p1p3/2P1P3/2NP1NP1/PP3PBP/R1BQ1RK1 w - - 0 9",
+    "nextgen": "c1g5",
+    "sf19": "a1b1",
+    "match": false,
+    "sf_cp_white": 5
+  }
+]
