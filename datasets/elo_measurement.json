@@ -1,0 +1,79 @@
+{
+  "measured_at": "2026-09-20T03:49:52Z",
+  "opponent": "Stockfish 19",
+  "time_control": "120ms vs 120ms per move",
+  "ladder": [
+    {
+      "sf_elo": 1320,
+      "games": 8,
+      "wins": 2,
+      "losses": 5,
+      "draws": 1,
+      "discarded": 0,
+      "score": 0.3125,
+      "estimated_elo": 1199.5880017344075,
+      "score_ci95": [
+        0.10240597465834517,
+        0.6442498826582337
+      ]
+    },
+    {
+      "sf_elo": 1400,
+      "games": 8,
+      "wins": 1,
+      "losses": 7,
+      "draws": 0,
+      "discarded": 0,
+      "score": 0.125,
+      "estimated_elo": 1120.4119982655925,
+      "score_ci95": [
+        0.02241690886329617,
+        0.4708948057698615
+      ]
+    },
+    {
+      "sf_elo": 1600,
+      "games": 8,
+      "wins": 0,
+      "losses": 6,
+      "draws": 2,
+      "discarded": 0,
+      "score": 0.125,
+      "estimated_elo": 1320.4119982655925,
+      "score_ci95": [
+        0.02241690886329617,
+        0.4708948057698615
+      ]
+    },
+    {
+      "sf_elo": 1800,
+      "games": 8,
+      "wins": 0,
+      "losses": 7,
+      "draws": 1,
+      "discarded": 0,
+      "score": 0.0625,
+      "estimated_elo": 1438.7640052032225,
+      "score_ci95": [
+        0.0065597206029106014,
+        0.40230394646910667
+      ]
+    },
+    {
+      "sf_elo": 2000,
+      "games": 8,
+      "wins": 0,
+      "losses": 8,
+      "draws": 0,
+      "discarded": 0,
+      "score": 0.0,
+      "estimated_elo": 1507.8204314486904,
+      "score_ci95": [
+        0.0,
+        0.3244156195108769
+      ]
+    }
+  ],
+  "combined_elo_estimate": 1247.6759753891913,
+  "notes": "Stockfish 19 UCI_Elo is calibrated 1320–3190. Full-strength SF19 is about 3600 CCRL; a 0% score vs max only says NextGen << 3000. The ladder vs limited SF19 is the honest rating."
+}
