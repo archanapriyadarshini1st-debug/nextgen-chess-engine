@@ -1,0 +1,113 @@
+{
+  "games_vs_sf19_max": 120,
+  "results": {
+    "loss": 119,
+    "draw": 1
+  },
+  "missed_total": 1940,
+  "real_mistakes_50_4999": 904,
+  "mate_walks": 118,
+  "avg_cp_loss_real": 192.5099557522124,
+  "by_phase": {
+    "opening": {
+      "n": 377,
+      "avg_cp": 239.76923076923077,
+      "blunders": 113
+    },
+    "middlegame": {
+      "n": 518,
+      "avg_cp": 158.55984555984557,
+      "blunders": 59
+    },
+    "endgame": {
+      "n": 9,
+      "avg_cp": 166.88888888888889,
+      "blunders": 1
+    }
+  },
+  "by_piece": {
+    "P": 228,
+    "N": 208,
+    "B": 131,
+    "Q": 120,
+    "R": 115,
+    "K": 102
+  },
+  "opening_replacements": [
+    {
+      "n": 3,
+      "played": "g4f2",
+      "best": "g4f6"
+    },
+    {
+      "n": 3,
+      "played": "b8c6",
+      "best": "f8g7"
+    },
+    {
+      "n": 3,
+      "played": "b1c3",
+      "best": "d2d4"
+    },
+    {
+      "n": 3,
+      "played": "d8e7",
+      "best": "d7d5"
+    },
+    {
+      "n": 3,
+      "played": "g4f2",
+      "best": "d7d6"
+    },
+    {
+      "n": 2,
+      "played": "f3g5",
+      "best": "f1d3"
+    },
+    {
+      "n": 2,
+      "played": "f3g5",
+      "best": "e2e3"
+    },
+    {
+      "n": 2,
+      "played": "g5f7",
+      "best": "g5f3"
+    },
+    {
+      "n": 2,
+      "played": "b8c6",
+      "best": "e7e5"
+    },
+    {
+      "n": 2,
+      "played": "g5f7",
+      "best": "d2d3"
+    },
+    {
+      "n": 2,
+      "played": "b1c3",
+      "best": "c2c3"
+    },
+    {
+      "n": 2,
+      "played": "e5f7",
+      "best": "e5f3"
+    },
+    {
+      "n": 2,
+      "played": "b8c6",
+      "best": "c7c5"
+    },
+    {
+      "n": 2,
+      "played": "d1e2",
+      "best": "d2d4"
+    },
+    {
+      "n": 2,
+      "played": "c6d4",
+      "best": "d7d6"
+    }
+  ]
+}
