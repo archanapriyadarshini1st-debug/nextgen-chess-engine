@@ -335,25 +335,22 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
             if (!see_ge(pos,m,thresh)) { ++movesTried; continue; }
         }
 
+        Piece movedPiece = pos.board()[m.from()];
         if (!pos.make_move(m)) continue;
+        bool givesCheck = pos.in_check(pos.side_to_move());
 
         int extension=0;
         if (in_check) extension=1;
-
-        // Singular Extension - DISABLED for stability (would need excluded move search)
-        // if (ply>0 && tt_hit && m.raw==tt_move.raw && depth>=6 && std::abs(tt_score)<MATE_SCORE-100 && (tt_flag==TTFlag::Beta || tt_flag==TTFlag::Exact) && tt_depth>=depth-3) {
-        //    extension = 1;
-        // }
+        // giving check is handled by the child's `if (in_check) ++depth` — do not double-extend
 
         int new_depth = depth -1 + extension;
         Score score;
 
-        // LMR
-        if (movesTried>=3 && depth>=3 && !isCapture && !isPromo && !in_check) {
+        // LMR — never reduce checks (SF19 beats us in forcing lines)
+        if (movesTried>=3 && depth>=3 && !isCapture && !isPromo && !in_check && !givesCheck) {
             int r = lmr_table_[std::min(depth,63)][std::min(movesTried,63)];
             if (cutNode) ++r;
-            // history correction
-            int slot = piece_slot(pos.board()[m.from()]);
+            int slot = piece_slot(movedPiece);
             if (slot>=0) r -= history_[slot][m.to()]/8192;
             r = std::max(0, std::min(r, depth-2));
             if (r>0) {
@@ -489,50 +486,58 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
             if (auto* tt = tt_.probe(pos.zobrist())) if (tt->key==pos.zobrist()) tt_move = tt->best;
             order_moves(pos, root, tt_move, 0);
 
+            // Always seed a legal fallback. Mate scores are ~-31999 which is
+            // WORSE than -INF (-30000), so `score > -INF` never fires when
+            // every root move is getting mated — that used to emit bestmove 0000.
+            Move fallback = root.moves[0];
             if (parallel_threads > 1 && depth >= 4 && root.size >= 8) {
-                struct RootEval { Move move; Score score; int seldepth; };
+                struct RootEval { Move move; Score score; int seldepth; bool ok; };
                 std::vector<std::future<RootEval>> tasks;
                 tasks.reserve(root.size);
                 const int launch_depth = depth - 1;
                 for (int i = 0; i < root.size; ++i) {
                     Move m = root.moves[i];
                     tasks.emplace_back(std::async(std::launch::async, [this, pos, m, launch_depth]() mutable {
-                        // Each thread gets its own search instance but shares TT via pointer? For safety we copy
                         Search local;
-                        local.tt_ = this->tt_; // copy TT snapshot
+                        local.tt_ = this->tt_;
                         local.history_ = this->history_;
                         Position p = pos;
-                        if (!p.make_move(m)) return RootEval{m, -INF, 0};
+                        if (!p.make_move(m)) return RootEval{m, -MATE_SCORE, 0, false};
                         Score sc = -local.negamax(p, launch_depth, -INF, INF, 1, false);
-                        return RootEval{m, sc, local.seldepth_};
+                        return RootEval{m, sc, local.seldepth_, true};
                     }));
                 }
-                Score local_best = -INF;
-                Move local_move{};
+                Score local_best = -MATE_SCORE - 1;
+                Move local_move = fallback;
                 int local_seldepth = 0;
+                bool have_move = false;
                 for (auto& fut : tasks) {
                     auto ev = fut.get();
-                    if (ev.score > local_best) { local_best = ev.score; local_move = ev.move; }
+                    if (!ev.ok) continue;
+                    if (!have_move || ev.score > local_best) { local_best = ev.score; local_move = ev.move; have_move = true; }
                     local_seldepth = std::max(local_seldepth, ev.seldepth);
                 }
+                if (!have_move) local_move = fallback;
                 best = local_move;
-                best_score = local_best;
-                previous = local_best;
+                best_score = have_move ? local_best : -MATE_SCORE;
+                previous = best_score;
                 seldepth_ = std::max(seldepth_, local_seldepth);
                 accepted = true;
             } else {
-                Score local_best = -INF;
-                Move local_move{};
+                Score local_best = -MATE_SCORE - 1;
+                Move local_move = fallback;
+                bool have_move = false;
                 for (int i = 0; i < root.size; ++i) {
                     Move m = root.moves[i];
                     if (!pos.make_move(m)) continue;
                     Score score = -negamax(pos, depth - 1, -beta, -alpha, 1, false);
                     pos.unmake_move();
-                    if (score > local_best) { local_best = score; local_move = m; }
+                    if (!have_move || score > local_best) { local_best = score; local_move = m; have_move = true; }
                     if (score > alpha) alpha = score;
                     if (alpha >= beta) break;
                     if (time_up()) break;
                 }
+                if (!have_move) { local_move = fallback; local_best = -MATE_SCORE; }
 
                 if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
                 if (depth >= 4 && local_best >= beta0) { previous = local_best; window *= 2; continue; }
@@ -546,6 +551,11 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
         r.score = best_score;
         r.depth = depth;
         if (time_up()) break;
+    }
+
+    if (r.best_move.is_null() && root.size > 0) {
+        r.best_move = root.moves[0];
+        if (best.is_null()) best = r.best_move;
     }
 
     r.nodes = nodes_;
