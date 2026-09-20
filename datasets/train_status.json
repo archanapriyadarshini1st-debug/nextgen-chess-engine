@@ -1,11 +1,100 @@
 {
-  "updated": "2026-09-20T05:03:56Z",
-  "played": 65,
-  "target": 80,
+  "updated": "2026-09-20T05:04:39Z",
+  "played": 80,
   "wins": 0,
-  "losses": 63,
+  "losses": 78,
   "draws": 2,
-  "discarded": 0,
-  "missed_moves": 1001,
-  "games_per_sec": 0.3649555168992437
+  "score": 0.0125,
+  "est_elo_vs_sf19_max": 2930.2896521596845,
+  "missed_moves_run": 1251,
+  "missed_moves_all": 3191,
+  "weaknesses": {
+    "updated": "2026-09-20T05:04:39Z",
+    "games": 200,
+    "results": {
+      "loss": 197,
+      "draw": 3
+    },
+    "missed_moves": 3191,
+    "by_phase": {
+      "opening": {
+        "moves": 1245,
+        "avg_cp_loss": 179.35823293172692,
+        "blunders": 191
+      },
+      "middlegame": {
+        "moves": 1920,
+        "avg_cp_loss": 896.3296875,
+        "blunders": 280
+      },
+      "endgame": {
+        "moves": 26,
+        "avg_cp_loss": 2069.076923076923,
+        "blunders": 7
+      }
+    },
+    "blunders_by_piece": {
+      "N": 661,
+      "P": 898,
+      "Q": 293,
+      "K": 412,
+      "B": 474,
+      "R": 453
+    },
+    "top_reasons": [
+      [
+        "positional improvement",
+        2036
+      ],
+      [
+        "develops a piece",
+        360
+      ],
+      [
+        "occupies centre",
+        336
+      ],
+      [
+        "you pushed a wing pawn instead",
+        169
+      ],
+      [
+        "castles (king safety)",
+        38
+      ],
+      [
+        "occupies centre; you pushed a wing pawn instead",
+        37
+      ],
+      [
+        "develops a piece; you pushed a wing pawn instead",
+        29
+      ],
+      [
+        "gives check; forcing; you missed a check",
+        19
+      ],
+      [
+        "occupies centre; develops a piece",
+        18
+      ],
+      [
+        "wins P; you missed a capture",
+        9
+      ],
+      [
+        "wins P; occupies centre; you missed a capture",
+        9
+      ],
+      [
+        "wins b",
+        7
+      ]
+    ],
+    "severity": {
+      "inaccuracy": 2102,
+      "blunder": 478,
+      "mistake": 611
+    }
+  }
 }
