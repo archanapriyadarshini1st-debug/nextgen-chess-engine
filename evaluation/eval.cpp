@@ -1,6 +1,5 @@
 #include "eval.h"
 #include "../nnue/nnue.h"
-#include "stockfish_nnue.h"
 #include <algorithm>
 #include <cmath>
 #include <mutex>
@@ -19,17 +18,85 @@ int value(Piece p) {
     }
 }
 int pst(Piece p, int sq) {
-    int f = file_of(sq), r = rank_of(sq);
-    int center = 14 - (std::abs(3 - f) + std::abs(3 - r))*2;
+    // a1=0 tables. Centre pawns, edge-penalised knights, king wants to castle.
+    // Previous file-agnostic pawn PST scored a2a4 ≈ e2e4 (31 vs 33).
+    static const int pawn_tbl[64] = {
+         0,  0,  0,  0,  0,  0,  0,  0,
+         5, 10, 10,-20,-20, 10, 10,  5,
+         5, -5,-10,  0,  0,-10, -5,  5,
+         0,  0,  0, 20, 20,  0,  0,  0,
+         5,  5, 10, 25, 25, 10,  5,  5,
+        10, 10, 20, 30, 30, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
+         0,  0,  0,  0,  0,  0,  0,  0
+    };
+    static const int knight_tbl[64] = {
+        -50,-40,-30,-30,-30,-30,-40,-50,
+        -40,-20,  0,  5,  5,  0,-20,-40,
+        -30,  5, 10, 15, 15, 10,  5,-30,
+        -30,  0, 15, 20, 20, 15,  0,-30,
+        -30,  5, 15, 20, 20, 15,  5,-30,
+        -30,  0, 10, 15, 15, 10,  0,-30,
+        -40,-20,  0,  0,  0,  0,-20,-40,
+        -50,-40,-30,-30,-30,-30,-40,-50
+    };
+    static const int bishop_tbl[64] = {
+        -20,-10,-10,-10,-10,-10,-10,-20,
+        -10,  5,  0,  0,  0,  0,  5,-10,
+        -10, 10, 10, 10, 10, 10, 10,-10,
+        -10,  0, 10, 10, 10, 10,  0,-10,
+        -10,  5,  5, 10, 10,  5,  5,-10,
+        -10,  0,  5, 10, 10,  5,  0,-10,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -20,-10,-10,-10,-10,-10,-10,-20
+    };
+    static const int rook_tbl[64] = {
+         0,  0,  0,  5,  5,  0,  0,  0,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+         5, 10, 10, 10, 10, 10, 10,  5,
+         0,  0,  0,  0,  0,  0,  0,  0
+    };
+    static const int queen_tbl[64] = {
+        -20,-10,-10, -5, -5,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5,  5,  5,  5,  0,-10,
+         -5,  0,  5,  5,  5,  5,  0, -5,
+          0,  0,  5,  5,  5,  5,  0, -5,
+        -10,  5,  5,  5,  5,  5,  0,-10,
+        -10,  0,  5,  0,  0,  0,  0,-10,
+        -20,-10,-10, -5, -5,-10,-10,-20
+    };
+    static const int king_mg[64] = {
+         20, 30, 10,  0,  0, 10, 30, 20,
+         20, 20,  0,  0,  0,  0, 20, 20,
+        -10,-20,-20,-20,-20,-20,-20,-10,
+        -20,-30,-30,-40,-40,-30,-30,-20,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30
+    };
+    auto lookup = [&](const int* tbl, bool white) {
+        int s = white ? sq : (sq ^ 56);
+        return tbl[s];
+    };
     switch (p) {
-        case Piece::WP: return r * 9 + center/2;
-        case Piece::BP: return (7 - r) * 9 + center/2;
-        case Piece::WN: case Piece::BN: return center * 3;
-        case Piece::WB: case Piece::BB: return center * 2 + (f==0||f==7? -2:0);
-        case Piece::WR: case Piece::BR: return (f == 0 || f == 7) ? 8 : center;
-        case Piece::WQ: case Piece::BQ: return center;
-        case Piece::WK: return -r * 5 + center/3;
-        case Piece::BK: return -(7 - r) * 5 + center/3;
+        case Piece::WP: return lookup(pawn_tbl, true);
+        case Piece::BP: return lookup(pawn_tbl, false);
+        case Piece::WN: return lookup(knight_tbl, true);
+        case Piece::BN: return lookup(knight_tbl, false);
+        case Piece::WB: return lookup(bishop_tbl, true);
+        case Piece::BB: return lookup(bishop_tbl, false);
+        case Piece::WR: return lookup(rook_tbl, true);
+        case Piece::BR: return lookup(rook_tbl, false);
+        case Piece::WQ: return lookup(queen_tbl, true);
+        case Piece::BQ: return lookup(queen_tbl, false);
+        case Piece::WK: return lookup(king_mg, true);
+        case Piece::BK: return lookup(king_mg, false);
         default: return 0;
     }
 }
@@ -203,6 +270,32 @@ int evaluate_space(const Position& pos, Color c) {
     return space*2;
 }
 
+int evaluate_knight_discipline(const Position& pos, Color c) {
+    // Opening: punish unsupported knight lunges (Ng5/Nb5) that SF19 keeps beating us with.
+    if (pos.game_ply() > 24) return 0;
+    int score = 0;
+    Bitboard knights = (c == Color::White ? pos.pieces(Piece::WN) : pos.pieces(Piece::BN));
+    Bitboard ourPawns = (c == Color::White ? pos.pieces(Piece::WP) : pos.pieces(Piece::BP));
+    for (int sq = 0; sq < 64; ++sq) if ((knights >> sq) & 1) {
+        int f = file_of(sq), r = rank_of(sq);
+        int forward = (c == Color::White ? r : 7 - r);
+        if (forward < 4) continue; // 5th rank and beyond
+        bool pawnDef = false;
+        int pd = (c == Color::White ? -1 : 1);
+        for (int df : {-1, 1}) {
+            int nf = f + df, nr = r + pd;
+            if (nf >= 0 && nf < 8 && nr >= 0 && nr < 8) {
+                if ((ourPawns >> square_of(nf, nr)) & 1) pawnDef = true;
+            }
+        }
+        if (!pawnDef) {
+            score -= 24;
+            if (f == 1 || f == 6) score -= 16; // b/g files — the Ng5/Nb5 special
+        }
+    }
+    return score;
+}
+
 int evaluate_threats(const Position& pos, Color c) {
     int score=0;
     Color them = (c==Color::White? Color::Black: Color::White);
@@ -230,11 +323,6 @@ void try_load_nnue() {
                 break;
             }
         }
-        // Also try to init Stockfish 18 evaluator (official NNUE EKNV2)
-        // This makes our engine as strong as Stockfish 18 if binary exists
-        StockfishEvaluator::instance().init("/tmp/stockfish/stockfish-ubuntu-x86-64-avx2");
-        StockfishEvaluator::instance().init("bin/stockfish18");
-        StockfishEvaluator::instance().init("/home/user/nextgen-chess-engine/bin/stockfish18");
     });
 }
 
@@ -254,6 +342,7 @@ Score evaluate_handcrafted(const Position& pos) {
     score += evaluate_mobility(pos, Color::White) - evaluate_mobility(pos, Color::Black);
     score += evaluate_space(pos, Color::White) - evaluate_space(pos, Color::Black);
     score += evaluate_threats(pos, Color::White) - evaluate_threats(pos, Color::Black);
+    score += evaluate_knight_discipline(pos, Color::White) - evaluate_knight_discipline(pos, Color::Black);
 
     for (int sq=0;sq<64;++sq) {
         Piece p=b[sq];
@@ -299,21 +388,13 @@ Score evaluate_handcrafted(const Position& pos) {
 }
 
 Score evaluate(const Position& pos) {
-    try_load_nnue();
-    // If Stockfish 18 evaluator is available (official NNUE EKNV2), use it - makes us as strong as SF18
-    if (StockfishEvaluator::instance().is_available()) {
-        Score sfScore = StockfishEvaluator::instance().evaluate(pos);
-        if (sfScore!=0) {
-            return std::clamp(sfScore, (Score)-10000, (Score)10000);
-        }
-    }
-    if (g_nnue.is_loaded()) {
-        Score nnueScore = g_nnue.evaluate(pos);
-        nnueScore = std::clamp(nnueScore, (Score)-10000, (Score)10000);
-        Score classical = evaluate_handcrafted(pos);
-        Score blended = (nnueScore*7 + classical*3)/10;
-        return std::clamp(blended, (Score)-10000, (Score)10000);
-    }
+    // The shipped 21MB HalfKP net does NOT match this engine:
+    //  - trainer used 10 own/enemy piece types; C++ used 12 absolute types including kings
+    //  - PyTorch Linear weight is [HT1][FT], C++ indexed [FT][HT1] (transposed)
+    //  - trained on self-play evals (loss 0.0 overfit), not Stockfish labels
+    // Mixing it in was injecting noise. Classical eval only until a matching net exists.
+    try_load_nnue(); // keep load path for a future correctly-exported net
+    (void)g_nnue;
     return evaluate_handcrafted(pos);
 }
 
