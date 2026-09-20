@@ -1,0 +1,89 @@
+{
+  "updated": "2026-09-20T03:56:58Z",
+  "games": 120,
+  "results": {
+    "loss": 119,
+    "draw": 1
+  },
+  "missed_moves": 1940,
+  "by_phase": {
+    "opening": {
+      "moves": 757,
+      "avg_cp_loss": 177.45838837516513,
+      "blunders": 117
+    },
+    "middlegame": {
+      "moves": 1158,
+      "avg_cp_loss": 872.7184801381693,
+      "blunders": 167
+    },
+    "endgame": {
+      "moves": 25,
+      "avg_cp_loss": 2151.84,
+      "blunders": 7
+    }
+  },
+  "blunders_by_piece": {
+    "N": 389,
+    "P": 565,
+    "Q": 187,
+    "K": 245,
+    "B": 283,
+    "R": 271
+  },
+  "top_reasons": [
+    [
+      "positional improvement",
+      1220
+    ],
+    [
+      "develops a piece",
+      224
+    ],
+    [
+      "occupies centre",
+      198
+    ],
+    [
+      "you pushed a wing pawn instead",
+      109
+    ],
+    [
+      "castles (king safety)",
+      28
+    ],
+    [
+      "develops a piece; you pushed a wing pawn instead",
+      19
+    ],
+    [
+      "occupies centre; you pushed a wing pawn instead",
+      19
+    ],
+    [
+      "occupies centre; develops a piece",
+      14
+    ],
+    [
+      "gives check; forcing; you missed a check",
+      13
+    ],
+    [
+      "wins P; occupies centre; you missed a capture",
+      6
+    ],
+    [
+      "castles (king safety); you pushed a wing pawn instead",
+      5
+    ],
+    [
+      "wins b",
+      5
+    ]
+  ],
+  "severity": {
+    "inaccuracy": 1290,
+    "blunder": 291,
+    "mistake": 359
+  }
+}
