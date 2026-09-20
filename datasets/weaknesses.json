@@ -1,89 +1,89 @@
 {
-  "updated": "2026-09-20T03:56:58Z",
-  "games": 120,
+  "updated": "2026-09-20T05:04:39Z",
+  "games": 200,
   "results": {
-    "loss": 119,
-    "draw": 1
+    "loss": 197,
+    "draw": 3
   },
-  "missed_moves": 1940,
+  "missed_moves": 3191,
   "by_phase": {
     "opening": {
-      "moves": 757,
-      "avg_cp_loss": 177.45838837516513,
-      "blunders": 117
+      "moves": 1245,
+      "avg_cp_loss": 179.35823293172692,
+      "blunders": 191
     },
     "middlegame": {
-      "moves": 1158,
-      "avg_cp_loss": 872.7184801381693,
-      "blunders": 167
+      "moves": 1920,
+      "avg_cp_loss": 896.3296875,
+      "blunders": 280
     },
     "endgame": {
-      "moves": 25,
-      "avg_cp_loss": 2151.84,
+      "moves": 26,
+      "avg_cp_loss": 2069.076923076923,
       "blunders": 7
     }
   },
   "blunders_by_piece": {
-    "N": 389,
-    "P": 565,
-    "Q": 187,
-    "K": 245,
-    "B": 283,
-    "R": 271
+    "N": 661,
+    "P": 898,
+    "Q": 293,
+    "K": 412,
+    "B": 474,
+    "R": 453
   },
   "top_reasons": [
     [
       "positional improvement",
-      1220
+      2036
     ],
     [
       "develops a piece",
-      224
+      360
     ],
     [
       "occupies centre",
-      198
+      336
     ],
     [
       "you pushed a wing pawn instead",
-      109
+      169
     ],
     [
       "castles (king safety)",
-      28
-    ],
-    [
-      "develops a piece; you pushed a wing pawn instead",
-      19
+      38
     ],
     [
       "occupies centre; you pushed a wing pawn instead",
+      37
+    ],
+    [
+      "develops a piece; you pushed a wing pawn instead",
+      29
+    ],
+    [
+      "gives check; forcing; you missed a check",
       19
     ],
     [
       "occupies centre; develops a piece",
-      14
+      18
     ],
     [
-      "gives check; forcing; you missed a check",
-      13
+      "wins P; you missed a capture",
+      9
     ],
     [
       "wins P; occupies centre; you missed a capture",
-      6
-    ],
-    [
-      "castles (king safety); you pushed a wing pawn instead",
-      5
+      9
     ],
     [
       "wins b",
-      5
+      7
     ]
   ],
   "severity": {
-    "inaccuracy": 1290,
-    "blunder": 291,
-    "mistake": 359
+    "inaccuracy": 2102,
+    "blunder": 478,
+    "mistake": 611
   }
 }
