@@ -54,13 +54,21 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
             int promo_rank = us == Color::White ? 6 : 1;
             int ep_rank = us == Color::White ? 4 : 3; // 5th rank for white, 4th for black (0-indexed)
             int next_r = r + dir;
-            if (!captures_only && on(f, next_r) && b[sq(f, next_r)] == Piece::None) {
+            if (on(f, next_r) && b[sq(f, next_r)] == Piece::None) {
                 int to = sq(f, next_r);
-                if (r == promo_rank) add_promos(pseudo, from, to, 0, false);
-                else pseudo.push(Move::make(from, to));
-                if (r == start_rank) {
-                    int jump_r = r + 2 * dir;
-                    if (on(f, jump_r) && b[sq(f, jump_r)] == Piece::None) pseudo.push(Move::make(from, sq(f, jump_r), FLAG_DOUBLE_PUSH));
+                // Quiescence search uses captures_only=true, but a quiet
+                // promotion is still a forcing tactical move and must be
+                // searched. Ordinary quiet pawn pushes remain excluded.
+                if (r == promo_rank) {
+                    add_promos(pseudo, from, to, 0, false);
+                } else if (!captures_only) {
+                    pseudo.push(Move::make(from, to));
+                    if (r == start_rank) {
+                        int jump_r = r + 2 * dir;
+                        if (on(f, jump_r) && b[sq(f, jump_r)] == Piece::None) {
+                            pseudo.push(Move::make(from, sq(f, jump_r), FLAG_DOUBLE_PUSH));
+                        }
+                    }
                 }
             }
             for (int df : {-1, 1}) {

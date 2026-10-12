@@ -78,6 +78,22 @@ void test_null_move_does_not_enter_repetition_history() {
     assert(pos.zobrist() == initial_key);
     assert(pos.key_history().size() == initial_history_size);
 }
+void test_capture_only_generation_keeps_quiet_promotions() {
+    Position pos;
+    pos.set_fen("7k/P7/8/8/8/8/8/7K w - - 0 1");
+
+    MoveList tactical;
+    generate_moves(pos, tactical, true);
+    int quiet_promotions = 0;
+    for (int i = 0; i < tactical.size; ++i) {
+        const Move m = tactical.moves[i];
+        if (m.from() == square_of(0, 6) && m.to() == square_of(0, 7) &&
+            (m.flags() & FLAG_PROMOTION)) {
+            ++quiet_promotions;
+        }
+    }
+    assert(quiet_promotions == 4);
+}
 void test_search_finds_mate_in_one() {
     // White to move: Qg7# is mate. Quiescence search must not stand pat
     // while Black is in check, and must score a checked position with no
@@ -154,6 +170,7 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_capture_only_generation_keeps_quiet_promotions();
     test_null_move_does_not_enter_repetition_history();
     test_experience_book_preserves_castling_flags();
     test_syzygy_stub_never_guesses_wins();
