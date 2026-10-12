@@ -10,13 +10,13 @@
 namespace chess {
 namespace {
 Move parse_move_text(const std::string& s, Position& pos) {
-    if (s.size() < 4) return Move{};
+    if (s.size() < 4 ||
+        s[0] < 'a' || s[0] > 'h' || s[1] < '1' || s[1] > '8' ||
+        s[2] < 'a' || s[2] > 'h' || s[3] < '1' || s[3] > '8') {
+        return Move{};
+    }
     int from = square_of(s[0] - 'a', s[1] - '1');
     int to = square_of(s[2] - 'a', s[3] - '1');
-    if (file_of(from) < 0 || file_of(from) >= 8 ||
-        rank_of(from) < 0 || rank_of(from) >= 8 ||
-        file_of(to) < 0 || file_of(to) >= 8 ||
-        rank_of(to) < 0 || rank_of(to) >= 8) return Move{};
 
     std::uint32_t promo = 0;
     if (s.size() >= 5) {
