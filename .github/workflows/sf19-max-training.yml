@@ -70,7 +70,7 @@ jobs:
           python tools/sf19_max_train.py train \
             --games "$GAMES" \
             --our-ms 120 \
-            --sf-ms 60 \
+            --sf-ms 120 \
             --analyse-depth 8 \
             --min-cp-loss 50
 
