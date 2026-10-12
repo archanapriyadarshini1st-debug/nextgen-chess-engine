@@ -1,4 +1,5 @@
 #include "../core/movegen.h"
+#include "../search/search.h"
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -56,6 +57,22 @@ void test_threefold() {
     assert(!pos.is_threefold());
 }
 
+void test_search_finds_mate_in_one() {
+    // White to move: Qg7# is mate. Quiescence search must not stand pat
+    // while Black is in check, and must score a checked position with no
+    // legal evasions as mate rather than as a static evaluation.
+    Position pos;
+    pos.set_fen("7k/8/5K2/6Q1/8/8/8/8 w - - 0 1");
+
+    Search search;
+    Limits limits;
+    limits.depth = 1;
+    const auto result = search.think(pos, limits);
+
+    assert(result.best_move.raw == Move::make(square_of(6, 4), square_of(6, 6)).raw);
+    assert(result.score >= MATE_SCORE - 2);
+}
+
 void test_kiwipete_perft() {
     Position pos;
     pos.set_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
@@ -71,6 +88,7 @@ int main() {
     test_draw_detection();
     test_threefold();
     test_kiwipete_perft();
+    test_search_finds_mate_in_one();
     std::cout << "engine regression tests passed (including perft, draw detection, repetition)\n";
     return 0;
 }
