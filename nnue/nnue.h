@@ -6,7 +6,7 @@
 
 namespace chess {
 
-constexpr int NNUE_FT_SIZE = 41024; // HalfKP 64*64*10? Simplified 41024
+constexpr int NNUE_FT_SIZE = 5120; // 8 king-rank buckets * 10 piece types * 64 squares
 constexpr int NNUE_HT1 = 256;
 constexpr int NNUE_HT2 = 32;
 constexpr int NNUE_SCALE = 400;
@@ -41,7 +41,7 @@ private:
     std::vector<int16_t> l2_weights_; // HT2
     int32_t l2_bias_{0};
 
-    // HalfKP feature indexing: king square + piece square * piece type
+    // Compact HalfKP-like feature indexing: king-rank bucket + piece square * piece type
     static int make_feature(Color perspective, int kingSq, Piece p, int pieceSq);
 };
 
