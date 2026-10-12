@@ -1,7 +1,11 @@
 #include "../core/movegen.h"
 #include "../search/search.h"
+#include "../opening/book.h"
+#include "../tb/syzygy.h"
 #include <cassert>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -78,6 +82,45 @@ void test_search_finds_mate_in_one() {
     assert(replies.size == 0);
 }
 
+void test_experience_book_preserves_castling_flags() {
+    const std::string fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+    Position pos;
+    pos.set_fen(fen);
+
+    const auto path = std::filesystem::temp_directory_path() / "nextgen_experience_book_test.txt";
+    {
+        std::ofstream out(path);
+        assert(out.good());
+        out << fen << " e1g1 500\n";
+    }
+
+    OpeningBook book;
+    assert(book.load_text(path.string()));
+    const auto move = book.find(pos);
+    assert(move.has_value());
+    assert((move->flags() & FLAG_KING_CASTLE) != 0);
+    assert(pos.make_move(*move));
+    assert(pos.piece_at(square_of(6, 0)) == Piece::WK);
+    assert(pos.piece_at(square_of(5, 0)) == Piece::WR);
+    assert(pos.piece_at(square_of(7, 0)) == Piece::None);
+    pos.unmake_move();
+
+    std::filesystem::remove(path);
+}
+
+void test_syzygy_stub_never_guesses_wins() {
+    SyzygyTablebase tablebase;
+    assert(!tablebase.set_path("."));
+
+    Position queen_versus_king;
+    queen_versus_king.set_fen("7k/8/8/8/8/8/6Q1/6K1 w - - 0 1");
+    assert(!tablebase.probe_wdl(queen_versus_king).has_value());
+
+    Position pawn_versus_king;
+    pawn_versus_king.set_fen("7k/8/8/8/8/8/4P3/4K3 w - - 0 1");
+    assert(!tablebase.probe_wdl(pawn_versus_king).has_value());
+}
+
 void test_kiwipete_perft() {
     Position pos;
     pos.set_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
@@ -94,6 +137,8 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_experience_book_preserves_castling_flags();
+    test_syzygy_stub_never_guesses_wins();
     std::cout << "engine regression tests passed (including perft, draw detection, repetition)\n";
     return 0;
 }
