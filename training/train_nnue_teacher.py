@@ -3,7 +3,9 @@
 
 The input JSONL is produced by tools/sf19_max_train.py and contains at least
   fen, best_cp
-best_cp is Stockfish's score from the side-to-move perspective.
+best_cp is Stockfish's score from the side-to-move perspective. The trainer
+converts it to White's perspective, because C++ flips the neural score for
+Black-to-move positions at inference.
 
 The exporter intentionally matches nnue/nnue.cpp's fixed-point layout:
   FT weights: [feature][hidden], QA-scaled
