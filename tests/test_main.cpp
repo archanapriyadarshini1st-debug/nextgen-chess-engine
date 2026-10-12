@@ -2,6 +2,7 @@
 #include "../search/search.h"
 #include "../opening/book.h"
 #include "../tb/syzygy.h"
+#include "../nnue/nnue.h"
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
@@ -94,6 +95,59 @@ void test_capture_only_generation_keeps_quiet_promotions() {
     }
     assert(quiet_promotions == 4);
 }
+void test_nnue_binary_layout_and_score_scale() {
+    const auto path = std::filesystem::temp_directory_path() / "nextgen_nnue_format_test.bin";
+    std::vector<std::int16_t> ft_weights(NNUE_FT_SIZE * NNUE_HT1, 0);
+    std::vector<std::int16_t> ft_bias(NNUE_HT1, 0);
+    std::vector<std::int16_t> l1_weights(NNUE_HT1 * 2 * NNUE_HT2, 0);
+    std::vector<std::int32_t> l1_bias(NNUE_HT2, 0);
+    std::vector<std::int16_t> l2_weights(NNUE_HT2, 0);
+    std::int32_t l2_bias = 0;
+
+    // In this position, the white pawn on a7 has feature index 48:
+    // king h1 -> bucket 0, own pawn -> type 0, square a7 -> 48.
+    // Activating only FT[48][0] -> L1[0][0] -> L2[0] should evaluate to +400 cp.
+    ft_weights[48 * NNUE_HT1] = QA;
+    l1_weights[0] = QB;
+    l2_weights[0] = QB;
+
+    {
+        std::ofstream out(path, std::ios::binary);
+        assert(out.good());
+        out.write(reinterpret_cast<const char*>(ft_weights.data()),
+                  static_cast<std::streamsize>(ft_weights.size() * sizeof(std::int16_t)));
+        out.write(reinterpret_cast<const char*>(ft_bias.data()),
+                  static_cast<std::streamsize>(ft_bias.size() * sizeof(std::int16_t)));
+        out.write(reinterpret_cast<const char*>(l1_weights.data()),
+                  static_cast<std::streamsize>(l1_weights.size() * sizeof(std::int16_t)));
+        out.write(reinterpret_cast<const char*>(l1_bias.data()),
+                  static_cast<std::streamsize>(l1_bias.size() * sizeof(std::int32_t)));
+        out.write(reinterpret_cast<const char*>(l2_weights.data()),
+                  static_cast<std::streamsize>(l2_weights.size() * sizeof(std::int16_t)));
+        out.write(reinterpret_cast<const char*>(&l2_bias), sizeof(l2_bias));
+        assert(out.good());
+    }
+
+    NNUE net;
+    assert(net.load(path.string()));
+    Position pos;
+    pos.set_fen("7k/P7/8/8/8/8/8/7K w - - 0 1");
+    assert(net.evaluate(pos) == 400);
+    pos.set_fen("7k/P7/8/8/8/8/8/7K b - - 0 1");
+    assert(net.evaluate(pos) == -400);
+
+    // A trailing byte must invalidate a network rather than silently accepting
+    // the prefix of an incompatible/oversized old file.
+    {
+        std::ofstream out(path, std::ios::binary | std::ios::app);
+        const char extra = 0;
+        out.write(&extra, 1);
+    }
+    NNUE invalid;
+    assert(!invalid.load(path.string()));
+    std::filesystem::remove(path);
+}
+
 void test_search_finds_mate_in_one() {
     // White to move: Qg7# is mate. Quiescence search must not stand pat
     // while Black is in check, and must score a checked position with no
@@ -170,6 +224,7 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_nnue_binary_layout_and_score_scale();
     test_capture_only_generation_keeps_quiet_promotions();
     test_null_move_does_not_enter_repetition_history();
     test_experience_book_preserves_castling_flags();
