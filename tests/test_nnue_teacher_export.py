@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import tempfile
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
+
+# Make the repository root importable when this file is run directly by CI.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from training.train_nnue_teacher import (
     FT_SIZE, HT1, HT2, QA, QB, TeacherNNUE, export_binary,
