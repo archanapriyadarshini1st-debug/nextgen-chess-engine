@@ -99,13 +99,16 @@ def load_positions(path: Path, max_cp: int) -> list[dict[str, Any]]:
             board = chess.Board(fen)
             if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
                 continue
+            # The engine applies a sign flip for Black-to-move at inference,
+            # so the network itself must learn a White-perspective score.
+            score_white_pov = int(score) if board.turn == chess.WHITE else -int(score)
             white, black = fen_to_features(fen)
             # King-versus-king positions have no active NNUE features; they
             # are drawn by rule and do not teach a useful static evaluation.
             if not white or not black:
                 continue
             key = " ".join(fen.split()[:4])  # board, side, castling, en-passant
-            clipped = max(-max_cp, min(max_cp, int(score)))
+            clipped = max(-max_cp, min(max_cp, score_white_pov))
             slot = aggregates.setdefault(
                 key, {"key": key, "fen": fen, "sum_cp": 0, "count": 0,
                       "white": white, "black": black}
