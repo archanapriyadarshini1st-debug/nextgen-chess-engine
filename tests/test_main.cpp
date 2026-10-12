@@ -61,6 +61,23 @@ void test_threefold() {
     assert(!pos.is_threefold());
 }
 
+void test_null_move_does_not_enter_repetition_history() {
+    Position pos;
+    pos.set_startpos();
+    const auto initial_fen = pos.fen();
+    const auto initial_key = pos.zobrist();
+    const auto initial_history_size = pos.key_history().size();
+
+    assert(pos.make_null_move());
+    assert(pos.zobrist() != initial_key);
+    assert(pos.key_history().size() == initial_history_size);
+    assert(!pos.is_threefold());
+
+    pos.unmake_move();
+    assert(pos.fen() == initial_fen);
+    assert(pos.zobrist() == initial_key);
+    assert(pos.key_history().size() == initial_history_size);
+}
 void test_search_finds_mate_in_one() {
     // White to move: Qg7# is mate. Quiescence search must not stand pat
     // while Black is in check, and must score a checked position with no
@@ -137,6 +154,7 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_null_move_does_not_enter_repetition_history();
     test_experience_book_preserves_castling_flags();
     test_syzygy_stub_never_guesses_wins();
     std::cout << "engine regression tests passed (including perft, draw detection, repetition)\n";

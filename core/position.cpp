@@ -269,15 +269,14 @@ bool Position::make_null_move() {
     u.stm = stm_;
     u.key = key_;
     u.eval_cache = eval_cache_;
+    // Null moves are search-only passes, not legal game history. Do not add
+    // their synthetic position to repetition bookkeeping.
     history_.push_back(u);
-    key_history_.push_back(key_); // still push? null move shouldn't count for threefold per FIDE? but keep
-    halfmove_history_.push_back(halfmove_clock_);
 
     ep_square_ = -1;
     stm_ = opposite(stm_);
     if (u.stm == Color::Black) ++fullmove_number_;
     refresh_key();
-    key_history_.back() = key_;
     return true;
 }
 
@@ -359,10 +358,9 @@ void Position::unmake_move() {
     if (history_.empty()) return;
     Undo u = history_.back();
     history_.pop_back();
-    if (!key_history_.empty()) key_history_.pop_back();
-    if (!halfmove_history_.empty()) halfmove_history_.pop_back();
 
     if (u.move.is_null()) {
+        // No key/halfmove-history entry was pushed by make_null_move().
         castling_rights_ = u.castling_rights;
         ep_square_ = u.ep_square;
         halfmove_clock_ = u.halfmove_clock;
@@ -372,6 +370,9 @@ void Position::unmake_move() {
         eval_cache_ = u.eval_cache;
         return;
     }
+
+    if (!key_history_.empty()) key_history_.pop_back();
+    if (!halfmove_history_.empty()) halfmove_history_.pop_back();
 
     const int from = u.move.from();
     const int to = u.move.to();
