@@ -126,7 +126,8 @@ void UCI::handle_setoption(const std::string& line) {
     } else if (name == "ExperienceFile") {
         if (book_.load_text(value)) use_book_ = true;
     } else if (name == "NNUEFile") {
-        nnue_.load(value);
+        const bool ok = load_evaluation_nnue(value);
+        std::cout << "info string NNUEFile " << (ok ? "loaded" : "failed to load") << " " << value << "\n";
     } else if (name == "OwnBook") {
         use_book_ = (value=="true" || value=="True");
     } else if (name == "UCI_Chess960") {
