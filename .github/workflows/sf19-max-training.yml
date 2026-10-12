@@ -37,6 +37,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install python-chess numpy
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python tests/test_nnue_teacher_export.py
 
       - name: Build and run correctness tests
         run: |
