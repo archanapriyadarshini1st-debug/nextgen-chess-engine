@@ -301,18 +301,21 @@ def analyse_our_moves(sf, game: dict, *, depth: int = 10, min_cp_loss: int = 50)
         best_cp = pov.score(mate_score=10000)
         if best_cp is None:
             continue
-        # eval of the move we actually played
+        # Compare like-for-like scores: analysing the best move at depth D
+        # against the played move at depth D-2 biases the loss estimate and
+        # creates noisy teacher labels. Search the played move at the same
+        # depth and only store positions with a meaningful measured gap.
+        if best == played:
+            continue
         try:
-            info2 = sf.analyse(board, chess.engine.Limit(depth=max(6, depth - 2)), root_moves=[played])
+            info2 = sf.analyse(board, chess.engine.Limit(depth=depth), root_moves=[played])
             played_cp = info2["score"].pov(board.turn).score(mate_score=10000)
             if played_cp is None:
-                played_cp = best_cp
+                continue
         except Exception:
-            played_cp = best_cp
-        cp_loss = int(best_cp - played_cp)
-        if cp_loss < min_cp_loss and best == played:
             continue
-        if best == played:
+        cp_loss = max(0, int(best_cp - played_cp))
+        if cp_loss < min_cp_loss:
             continue
         why = explain_best(board, best, played)
         entry = {
