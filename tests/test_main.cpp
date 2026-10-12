@@ -69,8 +69,13 @@ void test_search_finds_mate_in_one() {
     limits.depth = 1;
     const auto result = search.think(pos, limits);
 
-    assert(result.best_move.raw == Move::make(square_of(6, 4), square_of(6, 6)).raw);
+    assert(!result.best_move.is_null());
     assert(result.score >= MATE_SCORE - 2);
+    assert(pos.make_move(result.best_move));
+    assert(pos.in_check(pos.side_to_move()));
+    MoveList replies;
+    generate_moves(pos, replies, false);
+    assert(replies.size == 0);
 }
 
 void test_kiwipete_perft() {
