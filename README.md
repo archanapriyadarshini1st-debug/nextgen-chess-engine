@@ -37,6 +37,25 @@ Do **not** compile `evaluation/stockfish_nnue.cpp` — that forks Stockfish as t
 printf 'uci\nisready\nposition startpos\ngo depth 8\nquit\n' | ./bin/chess_engine
 ```
 
+## Stockfish-supervised NNUE (experimental)
+
+The manual GitHub Actions workflow `.github/workflows/sf19-max-training.yml` can run batches of 100, 250, 500, or 1,000 games against uncapped Stockfish 19. It uses equal 120 ms per move for both engines for the fast teacher-game batch, then analyses missed positions at Stockfish depth 8.
+
+A batch can also train a compact NNUE from `datasets/missed_best_moves.jsonl`:
+
+```bash
+python -m pip install python-chess numpy torch
+python training/train_nnue_teacher.py \
+  --dataset datasets/missed_best_moves.jsonl \
+  --out /tmp/nextgen_nnue.pt \
+  --report networks/nnue_training_report.json \
+  --epochs 20 --patience 4 --batch 128 --cpu
+```
+
+The trainer converts Stockfish labels to White's score perspective, holds out positions for validation, reports validation MAE/RMSE, and exports a binary matching the C++ feature map and fixed-point scales. CI includes a synthetic-network test for binary layout and score sign; the workflow also smoke-tests UCI loading before persisting the model and teacher data. The shipped old chunks under `networks/chunks/` are legacy and **must not be reassembled over the new compact model**.
+
+This is an experimental evaluation model, not an Elo guarantee. The first 100-game baseline against Stockfish 19 MAX ended 0–100–0 (NextGen had 120 ms per move; Stockfish had 60 ms). That result is not a balanced tournament rating; it motivates further search/evaluation work. Strength must be measured separately with equal time controls and repeatable matches.
+
 ## Train vs Stockfish 19 MAX (the teacher)
 
 ```bash
