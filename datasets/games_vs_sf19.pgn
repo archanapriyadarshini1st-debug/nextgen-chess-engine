@@ -6598,3 +6598,1103 @@
 
 1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 Bd7 6. O-O b6 7. Ng5 cxd4 8. Bxf7# 1-0
 
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. c4 d4 3. b4 c5 4. e3 Nf6 5. bxc5 Nc6 6. Na3 e5 7. exd4 e4 8. Ne5 Qxd4 9. Nxc6 Qxa1 10. Nc2 Qxa2 11. Ne5 Bxc5 12. d4 exd3 13. Bxd3 O-O 14. Qd2 Re8 15. Bxh7+ Kxh7 16. Qg5 Bxf2+ 17. Kd1 Bg4+ 18. Nxg4 Rad8+ 19. Bd2 Qb1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 c6 5. d3 Ke7 6. c4 Bg4 7. Be2 Bxf3 8. Bxf3 Qb6 9. O-O Qa5 10. Nc3 Kd7 11. Rb1 Qxc3 12. bxc3 b6 13. Re1 Ke7 14. d4 h5 15. e5 Ng4 16. Bg5+ f6 17. exf6+ Kd7 18. fxg7 Bxg7 19. Re7+ Kd8 20. Bxg4 hxg4 21. Rxg7+ Ke8 22. Qe2+ Kf8 23. Qe7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Na3 Nf6 5. e5 Qa5 6. exf6 cxb2+ 7. Bd2 Qe5+ 8. Be2 bxa1=Q 9. Nf3 Qxd1+ 10. Kxd1 Qa1+ 11. Bc1 Qxf6 12. Nc2 Nc6 13. Re1 Qd6+ 14. Bd2 e6 15. Kc1 Qc7 16. Ne3 Be7 17. Kb1 Qb6+ 18. Kc1 Ba3+ 19. Kc2 Qb2+ 20. Kd3 Nb4+ 21. Bxb4 Bxb4 22. Bd1 b6 23. Nc2 Qc3+ 24. Ke2 Ba6# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e6 2. d4 b6 3. Nf3 d5 4. Nc3 Ke7 5. exd5 exd5 6. Bd3 h5 7. Qe2+ Be6 8. Bg5+ f6 9. O-O b5 10. Rfe1 Ke8 11. Bg6+ Kd7 12. Qxe6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. Na3 Bf5 5. b4 e6 6. Bb2 Bxb4+ 7. c3 Be7 8. g4 Be4 9. f3 Bh4+ 10. Kd2 Bg6 11. Nc2 h5 12. gxh5 Rxh5 13. Kc1 Nc6 14. Bd3 Qg5+ 15. f4 Qxf4+ 16. Kb1 Bxd3 17. Qxd3 Qe4 18. Qxe4 dxe4 19. Nh3 Be7 20. Na3 Rxh3 21. d5 exd5 22. Nb5 O-O-O 23. Rf1 Nh6 24. Nxa7+ Nxa7 25. Rg1 g5 26. Rf1 Rd6 27. Rxf7 Nxf7 28. Ba3 Rb6+ 29. Kc1 Bxa3+ 30. Kd2 Rb2+ 31. Kd1 Rhxh2 32. c4 Rh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. Nf3 Bf5 5. b4 Qxb4 6. Rb1 Qa5 7. Rb5 Qxb5 8. Nxb5 c6 9. Nc7+ Kd7 10. Nxa8 f6 11. Nh4 Be6 12. Qf3 g5 13. Qg3 Na6 14. Bxa6 bxa6 15. Qc7+ Ke8 16. Qb8+ Kf7 17. Nc7 gxh4 18. Qe8+ Kg7 19. Nxe6+ Kh6 20. d4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Na3 e6 3. c4 dxc4 4. Nxc4 b5 5. Ne5 Bb4+ 6. Bd2 Qxd4 7. Nef3 Qxb2 8. Bxb4 Qxb4+ 9. Nd2 Nf6 10. e3 Bd7 11. Bd3 c5 12. Rb1 Qa5 13. Qf3 O-O 14. Qd1 c4 15. Bxc4 bxc4 16. Kf1 c3 17. Nc4 Qa6 18. Qb3 Bb5 19. Qxb5 c2 20. Qb3 Qxc4+ 21. Ne2 cxb1=Q+ 22. Qxb1 Nc6 23. Qe1 Rfd8 24. f3 Ne5 25. Qa5 Rd1+ 26. Qe1 Rxe1+ 27. Kxe1 Qb4+ 28. Kf2 Nd3+ 29. Kf1 Qe1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 b6 3. f3 Ba6 4. e4 h6 5. Nc3 Nxe4 6. fxe4 c6 7. Nf3 Rh7 8. Bd3 e5 9. Nxe5 f6 10. Qh5+ Ke7 11. Nd5+ cxd5 12. Ng6+ Ke8 13. Nh8+ Ke7 14. Qf7+ Kd6 15. Bf4+ Kc6 16. Qxd5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "1/2-1/2"]
+[Termination "THREEFOLD_REPETITION"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 d5 4. cxd5 exd5 5. e3 Bd6 6. Bd3 O-O 7. Nf3 Re8 8. O-O Bg4 9. Re1 Bh5 10. Bxh7+ Nxh7 11. Bd2 Nc6 12. Rf1 Ng5 13. Nxg5 Bxd1 14. Nxf7 Kxf7 15. Rfxd1 Kg8 16. Rac1 a5 17. Kf1 Ra6 18. g4 Qh4 19. f4 Qh3+ 20. Kg1 Qxg4+ 21. Kh1 Qf3+ 22. Kg1 Qg4+ 23. Kf1 Qf3+ 24. Kg1 1/2-1/2
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 g6 3. Nf3 Bg7 4. Nc3 Kf8 5. e4 b6 6. e5 Ng4 7. h3 Nxf2 8. Kxf2 Bxe5 9. Nxe5 Kg8 10. Kg1 Kg7 11. Rh2 Rf8 12. Nd3 Bb7 13. Nf2 f6 14. Qd2 Kf7 15. d5 c6 16. d6 exd6 17. Nh1 Kg8 18. Qf2 d5 19. Bf4 dxc4 20. Bxc4+ d5 21. Bf1 d4 22. Bc4+ Kg7 23. Rd1 h5 24. Rxd4 Qxd4 25. Qxd4 Na6 26. Qd7+ Kh8 27. Bh6 Rfc8 28. Qg7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. d4 e6 3. Ne5 Nf6 4. Nxf7 Kxf7 5. Na3 Bxa3 6. bxa3 Re8 7. c3 c5 8. dxc5 Nc6 9. Bb2 e5 10. Qb3 Na5 11. Qxb7+ Bxb7 12. Rc1 Re7 13. e3 a6 14. Bd3 Ke8 15. a4 Bc8 16. O-O Be6 17. Rfd1 Bg4 18. Re1 Raa7 19. e4 dxe4 20. Bxe4 Nxe4 21. Rxe4 Bf5 22. Ree1 Nc4 23. Ba1 Rad7 24. h4 Re6 25. g4 Qxh4 26. gxf5 Qg4+ 27. Kf1 Nd2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. c4 e5 2. e3 Nc6 3. Nc3 Nf6 4. Nf3 Bb4 5. Qc2 h5 6. Nd5 b6 7. a3 Bxa3 8. bxa3 Ba6 9. Bb2 Rh6 10. Nb4 Ng4 11. Nxa6 Nxf2 12. Kxf2 f6 13. Ke1 e4 14. Qxe4+ Kf7 15. c5 bxc5 16. Bc4+ Kf8 17. Qd5 f5 18. Qf7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. Nxe5 Qd4 7. Nxf7 Qxe4+ 8. Kf1 Kxf7 9. f3 Qd4 10. c3 Qd3+ 11. Kg1 Bc5# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 e5 5. Bb5+ Nd7 6. Nf5 a6 7. Ba4 b5 8. Bb3 Nc5 9. Nc3 Bxf5 10. exf5 Nf6 11. Qf3 b4 12. Qc6+ Ke7 13. Nd5+ Nxd5 14. Qxd5 Nxb3 15. Bg5+ f6 16. Qe6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. exd5 cxd5 8. O-O Be7 9. c3 O-O 10. Qf3 Rb8 11. Qxf6 Bxf6 12. c4 Rb6 13. cxd5 Qxd5 14. Rd1 Qh5 15. Bxh7+ Kxh7 16. Rd2 Re8 17. Nc3 Re1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. cxd5 Be7 5. dxe6 Bb4 6. exf7+ Kxf7 7. Qb3+ Be6 8. Qxb4 Nc6 9. Qa4 Nxd4 10. e3 Nc6 11. Nf3 Bc8 12. Bc4+ Ke7 13. e4 Rg8 14. e5 Nxe5 15. Nxe5 Ng4 16. Bg5+ Nf6 17. Rd1 Qe8 18. Qa3+ c5 19. Qxc5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 Bf5 5. exd6 cxd6 6. Na3 e6 7. Bd3 Bxd3 8. Qxd3 Be7 9. c4 Nb4 10. Qb3 d5 11. O-O N8c6 12. cxd5 Qxd5 13. Qxd5 Nxd5 14. Nc2 O-O 15. Bd2 Rfd8 16. Rac1 Bf6 17. h4 Rd7 18. b4 h6 19. a4 Nb6 20. Bxh6 gxh6 21. Rfe1 Nxa4 22. d5 Rxd5 23. Rf1 Nc3 24. Nh2 Ne2+ 25. Kh1 Nxc1 26. Rxc1 Rad8 27. Ne3 Rd3 28. b5 Nb4 29. Nc2 Rd1+ 30. Nf1 Rxc1 31. Na3 Rxf1+ 32. Kh2 Be5+ 33. g3 Rxf2+ 34. Kh3 h5 35. Nb1 Rd3 36. Na3 Rxg3# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. d4 b6 3. Bg5 h5 4. c4 Ng4 5. Nc3 Nxf2 6. Kxf2 Nc6 7. Ke1 f6 8. Bd2 Kf7 9. e4 Ba6 10. Qa4 Na5 11. b4 Bxc4 12. bxa5 Bxf1 13. Rxf1 bxa5 14. Ne5+ Kg8 15. Ng6 Rh7 16. Qc4+ d5 17. Nxd5 Kf7 18. Ne5+ Kg8 19. Nxf6+ Kh8 20. Ng6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 Be7 6. Bd3 d5 7. O-O O-O 8. h4 Bg4 9. Re1 f5 10. Bxe4 fxe4 11. Rxe4 dxe4 12. c3 exf3 13. Qb3+ Kh8 14. gxf3 Bxf3 15. Kf1 Qc8 16. Bd2 Qh3+ 17. Kg1 Qh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 e6 6. O-O cxd4 7. exd4 Be7 8. Nc3 O-O 9. Re1 a6 10. d5 Bd6 11. dxe6 fxe6 12. Bxe6+ Bxe6 13. Rxe6 Be7 14. Qb3 Kh8 15. Be3 Qc7 16. Bb6 Qc8 17. Rxe7 Ne8 18. Ng5 Nc6 19. Nf7+ Rxf7 20. Rxf7 Kg8 21. Rf5+ Qe6 22. Qxe6+ Kh8 23. Rf8# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. h4 d5 3. d4 c5 4. Na3 cxd4 5. Ne5 Qa5+ 6. Bd2 Qc7 7. Nxf7 Kxf7 8. Bg5 e5 9. Bxf6 Bb4+ 10. c3 dxc3 11. Nc2 cxb2+ 12. Qd2 bxa1=Q+ 13. Nxa1 Qc1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 Nxf2 6. Qe2+ Kd7 7. Qxf2 Qe8+ 8. Be2 h5 9. O-O b6 10. Re1 Be7 11. Ng5 c6 12. Bd3 f6 13. Ne6 Ba6 14. Bf5 g5 15. Ng7+ Kc7 16. Nxe8+ Rxe8 17. Re3 c5 18. dxc5 g4 19. cxd6+ Bxd6 20. Rxe8 Bc5 21. Bf4+ Kb7 22. Bc8+ Kc6 23. Re6+ Kd5 24. Nc3+ Kc4 25. Re4+ Bd4 26. Qxd4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nc3 Nc6 3. h4 Nf6 4. e5 Nxe5 5. f4 Nc6 6. b3 d5 7. Ba3 Qa5 8. f5 Qxa3 9. Nb1 Qa5 10. Be2 Bxf5 11. b4 Qc7 12. g4 Qg3+ 13. Kf1 Nxg4 14. Rh3 Qf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1/2-1/2"]
+[Termination "THREEFOLD_REPETITION"]
+
+1. e4 e6 2. d4 b6 3. Bd3 Ke7 4. Bg5+ f6 5. Be3 Bb7 6. c4 Bxe4 7. Bxe4 d5 8. cxd5 exd5 9. Bd3 h5 10. Qc2 Ke6 11. Bf5+ Kf7 12. Bg6+ Ke6 13. Bf5+ Kf7 14. Bg6+ Ke6 1/2-1/2
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Na3 e6 5. Bd3 Bxd3 6. cxd3 Bxa3 7. Qb3 Be7 8. Qxb7 Nd7 9. Nf3 Qc8 10. Qxc8+ Rxc8 11. Bd2 Rb8 12. O-O Bd8 13. Rfe1 Ne7 14. h4 h5 15. Kf1 Nf8 16. Ke2 Nf5 17. Rec1 Ng6 18. Rxc6 Ngxh4 19. Nxh4 Nxd4+ 20. Kd1 Nxc6 21. Nf3 Rxb2 22. Ke2 O-O 23. Rc1 Nb4 24. Kf1 Nxa2 25. Bg5 Nxc1 26. Bxc1 Rb1 27. Ke2 Rxc1 28. Nd4 Bb6 29. Nxe6 fxe6 30. d4 Rc2+ 31. Ke3 Rfxf2 32. Kd3 Rxg2 33. Ke3 Rcf2 34. Kd3 Rf3# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. d4 f5 5. Bc4 b5 6. Bxb5+ c6 7. Qf3 cxb5 8. Qxa8 Ba6 9. Qxb8+ Kf7 10. Nf3 b4 11. Ng5+ Kg6 12. Qe8+ Kh6 13. Ne6+ f4 14. Bxf4+ g5 15. Qxf8+ Kg6 16. g4 bxc3 17. Qg7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Bf4 c5 3. Bxb8 Rxb8 4. dxc5 e6 5. b4 a5 6. a3 b6 7. Kd2 bxc5 8. Nf3 cxb4 9. axb4 Bxb4+ 10. c3 Bd6 11. Qa4+ Bd7 12. Qc2 Nf6 13. e3 O-O 14. Bd3 e5 15. Rc1 e4 16. Rxa5 Qxa5 17. Bxe4 dxe4 18. h4 exf3 19. gxf3 Bf5 20. e4 Bf4+ 21. Kd1 Rfd8+ 22. Ke1 Bxc1 23. exf5 Bf4 24. Ke2 Qb5+ 25. c4 Qxb1 26. Qc3 Qd1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e5 3. dxe5 Bb4+ 4. Bd2 Ne4 5. Bxb4 Nxf2 6. Kxf2 c6 7. Bd2 Qh4+ 8. g3 Qxc4 9. Ke1 b5 10. Nf3 Ba6 11. b4 Ke7 12. Na3 Qxb4 13. Bxb4+ Ke6 14. Bh3+ f5 15. Ng5+ Kxe5 16. Qd6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 d5 4. Qa4+ Bd7 5. Qb3 Nc6 6. Bg5 Nxd4 7. Qd1 h6 8. Bxf6 Qxf6 9. e3 Nf5 10. cxd5 Bb4 11. dxe6 Bxc3+ 12. bxc3 Qxc3+ 13. Ke2 Bb5+ 14. Kf3 Bc6+ 15. Ke2 fxe6 16. Rc1 Nd4+ 17. exd4 Bb5+ 18. Qd3 Qxd3+ 19. Ke1 Qxf1+ 20. Kd2 Qd3+ 21. Ke1 Rd8 22. Rd1 Qc3+ 23. Rd2 Rxd4 24. Ne2 Qxd2+ 25. Kf1 Qd1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 d6 4. e4 e6 5. f4 h5 6. Nf3 Nbd7 7. e5 Nxe5 8. dxe5 dxe5 9. Qxd8+ Kxd8 10. fxe5 Ng4 11. h3 Nf2 12. Kxf2 c6 13. Bg5+ Ke8 14. Bf6 Rh7 15. Rd1 Bh6 16. Rd8# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. e3 e6 3. Nc3 Nf6 4. Bd3 a6 5. Ke2 c5 6. h4 c4 7. Bxc4 dxc4 8. h5 h6 9. Rh4 b5 10. a4 b4 11. Ne4 Bb7 12. Nxf6+ gxf6 13. c3 Qd3+ 14. Ke1 Nc6 15. Qe2 Na5 16. cxb4 Nb3 17. Qxd3 cxd3 18. Rb1 Bxf3 19. gxf3 Rg8 20. e4 Rg1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. c4 e5 2. g3 g6 3. d4 exd4 4. Qxd4 Nf6 5. Nc3 Nc6 6. Qe3+ Ne7 7. Qe5 Bg7 8. Nd5 Nxd5 9. Qxg7 Nf6 10. Qxh8+ Nfg8 11. Bg5 Kf8 12. Bg2 h5 13. Qc3 c6 14. Rd1 Qc7 15. e4 f6 16. Bf4 Qd8 17. Ne2 g5 18. Bd6 Qc7 19. Bxc7 Kf7 20. f4 gxf4 21. Rd6 fxg3 22. hxg3 Ng6 23. Bf3 b5 24. Bxh5 bxc4 25. Rxf6+ Nxf6 26. O-O Bb7 27. Qxf6+ Kg8 28. Qxg6+ Kh8 29. Be5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Be7 5. Bxc6 dxc6 6. Nxe5 Qd4 7. Nxf7 Qxe4+ 8. Qe2 Qxg2 9. Qf1 Qe4+ 10. Qe2 Qxh1+ 11. Qf1 Qxh2 12. Qd3 Kxf7 13. Nc3 Nf6 14. Kf1 Bd6 15. f3 Bh3+ 16. Ke1 Qg1+ 17. Ke2 Bf1+ 18. Ke1 Bxd3# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 e5 5. Bb5+ Nd7 6. Nf5 a6 7. Ba4 b5 8. Bb3 Nc5 9. Nc3 Bxf5 10. exf5 Nf6 11. Bg5 Be7 12. Bxf6 Bxf6 13. Qd5 O-O 14. O-O-O e4 15. Nxe4 Nxe4 16. Qxe4 Kh8 17. f4 Bxb2+ 18. Kxb2 Re8 19. Qd4 Rc8 20. Qxd6 Qxd6 21. Rxd6 Rc5 22. Bxf7 Rf8 23. Be6 Rxc2+ 24. Kxc2 g6 25. Rhd1 Kg7 26. Rxa6 gxf5 27. Rd7+ Kg6 28. Bf7+ Kg7 29. Bc4+ Kh8 30. Raa7 bxc4 31. Rxh7+ Kg8 32. Rag7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. Nc3 Bd6 8. O-O O-O 9. Rb1 Nxe4 10. Nxe4 dxe4 11. Bxe4 Qh4 12. Qxd6 cxd6 13. Bxc6 Ba6 14. Bxa8 Rxa8 15. g3 Qh5 16. Re1 Bb7 17. Bf4 Qh3 18. Bxd6 Qg2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. cxd5 exd5 5. Bg5 Bb4 6. e3 Bxc3+ 7. bxc3 c5 8. Bd3 O-O 9. Bxf6 Qxf6 10. Qh5 g6 11. Qxd5 cxd4 12. cxd4 Rd8 13. Qf3 Qe7 14. Ne2 Qb4+ 15. Kf1 Nc6 16. h4 Ne5 17. Qf6 Nxd3 18. Qxd8+ Qf8 19. Qxf8+ Kxf8 20. h5 Nxf2 21. Kxf2 gxh5 22. Nf4 Ke8 23. Rxh5 b5 24. Rxh7 f6 25. Rah1 Ba6 26. Rc7 b4 27. Rh8# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 Bf5 5. exd6 cxd6 6. Bb5+ Nd7 7. Bxd7+ Qxd7 8. Kd2 g6 9. Nc3 Nxc3 10. bxc3 Rc8 11. h4 Qc6 12. Ke1 Qxc3+ 13. Bd2 Qxc2 14. Rh2 h5 15. a4 Qb2 16. Rc1 Bg7 17. a5 O-O 18. Bf4 Qb5 19. Rxc8 Rxc8 20. d5 Bc3+ 21. Bd2 Bxd2+ 22. Qxd2 Qb1+ 23. Ke2 Rc2 24. a6 Rxd2+ 25. Kxd2 Qd3+ 26. Ke1 Qc3+ 27. Ke2 Bd3+ 28. Kd1 Qc2+ 29. Ke1 Qe2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. c4 h5 3. Nc3 Ng4 4. h3 Nxf2 5. Kxf2 g6 6. d4 e6 7. e4 Bb4 8. Bg5 f6 9. Be3 Ke7 10. e5 fxe5 11. Bg5+ Ke8 12. Bxd8 exd4 13. Bf6 Rh7 14. Nb5 d5 15. cxd5 exd5 16. Ng5 c6 17. Qe2+ Kd7 18. Qe6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. Bd3 Nc6 7. O-O Be7 8. Bxe4 dxe4 9. Ne5 Nxd4 10. Be3 Nf5 11. Qh5 g6 12. Qxf5 Bxf5 13. Nxf7 Kxf7 14. Bxa7 Rxa7 15. Rc1 Ra6 16. Nc3 h5 17. Rd1 Qc8 18. Nxe4 Bxe4 19. g3 Rf6 20. Rac1 Qh3 21. a4 Qg2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 e6 6. O-O cxd4 7. exd4 Be7 8. Nc3 O-O 9. Re1 a6 10. d5 exd5 11. Nxd5 Nxd5 12. Qxd5 Qc7 13. Qe4 Qxc4 14. Qxc4 Nc6 15. Bg5 Na5 16. Qe4 Bxg5 17. Nxg5 h6 18. Qh7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nc3 Nf6 3. Bf4 Bf5 4. Bxc7 Qxc7 5. e3 e6 6. Bd3 Bb4 7. Ne2 Bxd3 8. Qxd3 Nc6 9. f3 O-O-O 10. h4 Kb8 11. Qxh7 Rxh7 12. Rh3 Rdh8 13. Kd2 Rxh4 14. Rxh4 Rxh4 15. Kd3 Ba5 16. Rc1 e5 17. g3 Rh2 18. Rd1 Qb6 19. Rc1 Qa6+ 20. Kd2 Qxe2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 Nxf2 6. Qe2+ Be7 7. Qxf2 g6 8. Bd3 Bf6 9. Bh6 Bg4 10. Nbd2 c5 11. O-O Nc6 12. d5 Bxb2 13. dxc6 Bxa1 14. cxb7 Rb8 15. Bb5+ Ke7 16. Rxa1 Rxb7 17. Re1+ Be6 18. Qh4+ f6 19. Rxe6+ Kf7 20. Rxf6+ Qxf6 21. Qc4+ Ke7 22. Qe4+ Kd8 23. Qxb7 Qb2 24. Qd7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Bd3 Nc6 3. Nf3 Nf6 4. h3 Nb4 5. h4 Nxd3+ 6. cxd3 d6 7. Ke2 e5 8. Nxe5 dxe5 9. h5 Be7 10. Ke1 O-O 11. Qb3 h6 12. Ke2 Kh8 13. f3 Rb8 14. Qxb7 Bxb7 15. Nc3 Ng8 16. Re1 f5 17. exf5 Rxf5 18. a4 Ba6 19. Kf1 Bxd3+ 20. Kf2 Bh4+ 21. g3 Bxg3+ 22. Kxg3 Qg5+ 23. Kf2 Rxf3+ 24. Kxf3 Rf8# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e6 2. d4 Nf6 3. e5 Ng8 4. Nf3 d6 5. Bd3 c5 6. c3 cxd4 7. cxd4 dxe5 8. dxe5 Bb4+ 9. Nc3 Bxc3+ 10. bxc3 Kd7 11. Ng5 Qe7 12. Nxf7 Qxf7 13. Bb5+ Ke7 14. Qd6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c6 2. d4 d5 3. Nf3 dxe4 4. Ng5 Bf5 5. g4 Bg6 6. f3 Nf6 7. Bc4 exf3 8. Bxf7+ Bxf7 9. Nxf7 Kxf7 10. O-O h6 11. Kf2 Kg8 12. Bxh6 Nxg4+ 13. Kxf3 Nxh2+ 14. Kg2 Rxh6 15. Re1 Qd5+ 16. Kf2 Qf5+ 17. Ke2 Qg4+ 18. Kd2 Qf4+ 19. Ke2 Nf3 20. c3 Rh2+ 21. Kf1 Nd2+ 22. Kg1 Qf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. d4 Nf6 5. Nf3 c6 6. Bd3 Bg4 7. h3 Bxf3 8. Qxf3 e6 9. Bd2 Qxc3 10. bxc3 Nd5 11. Rb1 b5 12. Rb3 Nxc3 13. Bxc3 b4 14. Be4 Bd6 15. Bxc6+ Nxc6 16. Qxc6+ Ke7 17. Qb7+ Kf6 18. Bd2 Rhb8 19. Rf3+ Kg6 20. Qxf7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. a4 Nf6 3. Bg5 Ne4 4. f4 c5 5. dxc5 h6 6. Bh4 g5 7. c4 gxh4 8. cxd5 Bg7 9. e3 Nd7 10. Qf3 Qa5+ 11. Ke2 Ndxc5 12. Kd1 Bd7 13. Bd3 Nxd3 14. Qxe4 Nf2+ 15. Ke2 Nxe4 16. Nc3 Bxc3 17. bxc3 Bg4+ 18. Nf3 Qxc3 19. Rac1 Qd2+ 20. Kf1 Qf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 d5 3. cxd5 Nxd5 4. Nf3 h6 5. e4 Nf6 6. Nc3 Bg4 7. Qb3 Bxf3 8. gxf3 b5 9. e5 b4 10. Qxb4 Rh7 11. exf6 Nd7 12. Bb5 exf6 13. Qa4 c5 14. O-O cxd4 15. Qxd4 Qb8 16. Qxd7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qd2 c5 5. Qg5 cxd4 6. a3 Be7 7. f4 dxc3 8. Qxg7 Rg8 9. bxc3 Rxg7 10. Kd2 d5 11. cxd5 Qxd5+ 12. Ke1 Qb3 13. Kd2 Ne4+ 14. Ke1 Qxc3+ 15. Kd1 Nf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 d6 4. e4 e6 5. f4 Nxe4 6. Nxe4 d5 7. Nf2 dxc4 8. Bxc4 Bb4+ 9. Bd2 Qxd4 10. Bxb4 Qxc4 11. Bc3 O-O 12. Ng4 Qc6 13. Nh6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. Nc3 d4 3. Ne4 e5 4. Nxe5 Qd5 5. Ng5 Qxe5 6. Nxf7 Kxf7 7. e4 Qxe4+ 8. Qe2 Qxe2+ 9. Bxe2 Ke8 10. c3 Nf6 11. O-O Kd8 12. Re1 Nc6 13. Bb5 Bd7 14. d3 Bd6 15. Bg5 h6 16. Bxf6+ gxf6 17. Rad1 dxc3 18. bxc3 a6 19. Bxc6 Bxc6 20. Kh1 Rg8 21. d4 Bxg2+ 22. Kg1 Bf3+ 23. Kf1 Bxh2 24. Rc1 Rg1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. c4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. g3 Ng4 5. Bg2 a6 6. O-O d6 7. d4 Nxd4 8. Nxd4 exd4 9. Qxd4 c5 10. Qe4+ Ne5 11. f4 h5 12. Rd1 b5 13. fxe5 Kd7 14. Qc6+ Ke7 15. exd6+ Ke6 16. Qe4+ Kd7 17. Bh3+ f5 18. Bxf5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. d3 Bc5 6. Bxc6 dxc6 7. h3 Be6 8. O-O Qe7 9. Bg5 h6 10. Bxf6 Qxf6 11. Nfd2 g5 12. Re1 Bxf2+ 13. Kf1 g4 14. hxg4 Bxe1+ 15. Kxe1 Qh4+ 16. Kf1 Qh1+ 17. Ke2 Bxg4+ 18. Nf3 Bxf3+ 19. gxf3 Qh2+ 20. Ke3 Rg8 21. Qe2 Qf4+ 22. Kf2 Qg3+ 23. Ke3 Qg5+ 24. Kf2 Qg1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2 Nxe4 7. Nxe4 f5 8. Nc3 e5 9. Nb3 Kd7 10. Nd5 Ke8 11. Be3 Kd7 12. Nb6+ Qxb6 13. Bxb6 Ke7 14. c4 Nd7 15. Bc7 Ke8 16. c5 dxc5 17. O-O f4 18. Qd5 Nf6 19. Qxe5+ Kf7 20. Rfe1 h5 21. Bc4+ Kg6 22. Bd3+ Kf7 23. Bd8 b5 24. Bxf6 gxf6 25. Qe8+ Kg8 26. Qg6+ Bg7 27. Re8# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. exd5 cxd5 8. O-O Be7 9. Bf4 O-O 10. c3 Rb8 11. b4 Re8 12. Nd2 d4 13. cxd4 Rxb4 14. Nc4 Ba6 15. Rc1 Qd5 16. Bxh7+ Nxh7 17. Re1 Rxc4 18. Rxe7 Rxe7 19. Bh6 Rxc1 20. Bxc1 Qxa2 21. Bf4 Re8 22. h4 Be2 23. Qxe2 Qxe2 24. Kh2 Qxf2 25. Bg3 Qxd4 26. h5 Re2 27. Kh3 Ng5+ 28. Kh2 Nf3+ 29. Kh3 Qd7# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. cxd5 exd5 5. Bg5 Be6 6. e3 Kd7 7. Bd3 Nc6 8. Nge2 g6 9. e4 dxe4 10. Bb5 Bxa2 11. Rxa2 Ke8 12. d5 a6 13. dxc6 Qxd1+ 14. Nxd1 Rb8 15. Bxf6 axb5 16. cxb7 Rxb7 17. Ra8+ Kd7 18. Rd8+ Ke6 19. Bxh8 Be7 20. Nd4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 dxe5 5. Nxe5 g6 6. Bc4 Bg7 7. Bxd5 Qxd5 8. Ke2 Bxe5 9. dxe5 Qxg2 10. Nc3 Bg4+ 11. Ke3 Bxd1 12. Rxd1 Nc6 13. Nd5 O-O-O 14. Ke2 Rxd5 15. Rxd5 Qxd5 16. c3 Nxe5 17. Bf4 Qd3+ 18. Ke1 Nf3# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. d4 b5 3. e3 Ne4 4. Bxb5 Nxf2 5. Kxf2 e6 6. Rf1 Bb7 7. Kg1 Bb4 8. c4 Nc6 9. c5 f5 10. a3 Bxc5 11. dxc5 Qe7 12. Qc2 a6 13. Bd3 d5 14. Nc3 Rb8 15. b4 Ra8 16. Ra2 Nxb4 17. axb4 Kf7 18. c6 Bxc6 19. Ne5+ Ke8 20. Nxc6 Qf6 21. b5 axb5 22. Rxa8+ Kd7 23. Rxh8 h5 24. Nxb5 g6 25. Nb8+ Ke7 26. Qxc7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. Bd3 Nc6 7. O-O Be7 8. Nbd2 Nxd2 9. Nxd2 Nxd4 10. Re1 O-O 11. Rb1 Bf5 12. Nb3 Bxd3 13. Nxd4 Bg6 14. f3 c5 15. Rxe7 Qxe7 16. Ne2 Rfe8 17. Kf2 d4 18. Ke1 Rad8 19. a4 d3 20. cxd3 Bxd3 21. Ra1 Bxe2 22. Qxd8 Qxd8 23. Bf4 Qd4 24. Rc1 Bc4+ 25. Be5 Rxe5# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 e6 6. O-O cxd4 7. exd4 Be7 8. Nc3 O-O 9. Re1 a6 10. d5 exd5 11. Nxd5 Qxd5 12. Bxd5 Re8 13. Bxf7+ Kxf7 14. Qb3+ Kg6 15. Ne5+ Kf5 16. Qh3+ Ng4 17. Qxg4+ Kf6 18. Bg5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. c3 e6 3. e4 dxe4 4. Bc4 exf3 5. Qxf3 Nf6 6. O-O Be7 7. Re1 c5 8. Kf1 O-O 9. d3 Bd7 10. Qxb7 Bc6 11. Qb3 Qc7 12. f4 Nd5 13. Bxd5 Bxd5 14. Kg1 Bxb3 15. axb3 Rd8 16. c4 Rd7 17. Ra3 Qd8 18. Kf1 Bh4 19. Re3 Rxd3 20. Nc3 Rxe3 21. Bxe3 Qd3+ 22. Kg1 Qxe3+ 23. Kf1 Qe1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 Nxf2 6. Qe2+ Be7 7. Qxf2 c5 8. dxc5 dxc5 9. Be2 Kd7 10. Ne5+ Ke8 11. Qxf7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. d4 cxd4 3. Qxd4 Nc6 4. Qd2 Nf6 5. Nc3 e5 6. Bd3 Bc5 7. a4 d5 8. Qg5 h6 9. Qh4 d4 10. Qxf6 Qxf6 11. f3 Bb4 12. Bxh6 Rxh6 13. Ne2 dxc3 14. bxc3 Be7 15. Rc1 a6 16. Kf1 Na5 17. h4 Rxh4 18. Rxh4 Qxh4 19. c4 Bc5 20. g3 Qh1+ 21. Ng1 Qxg1+ 22. Ke2 Qxc1 23. g4 Be3 24. c3 Qd2+ 25. Kf1 Qf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e6 2. d4 b5 3. Bxb5 Nf6 4. e5 Be7 5. exf6 gxf6 6. Be2 a6 7. c4 Nc6 8. Nc3 Nxd4 9. Qxd4 Bb7 10. Nf3 c5 11. Qf4 Bxf3 12. Qxf3 Rf8 13. Nb1 f5 14. Nd2 Bf6 15. Qa3 Rb8 16. O-O f4 17. Nf3 Rb4 18. Rd1 d6 19. Rb1 Rxb2 20. Bxb2 Bxb2 21. Rxb2 Qc7 22. Rdb1 Kd7 23. Rb7 Kc6 24. Qa4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. Nf3 Nf6 5. Nc3 Bg4 6. Bf4 Nc6 7. Bb5 Rc8 8. Bxc6+ Rxc6 9. O-O e6 10. Qe2 Qb6 11. Nxd5 Nxd5 12. Rfe1 Nxf4 13. Qd1 Be7 14. d5 Nxd5 15. c4 Bxf3 16. Qxf3 Rxc4 17. b3 Rc6 18. Qe2 O-O 19. Rac1 Rxc1 20. Rxc1 Bg5 21. Re1 Qa5 22. Kf1 Bf6 23. Qc4 Qxa2 24. g3 a6 25. Rc1 Qd2 26. Rc2 Qd1+ 27. Kg2 b5 28. Rc1 Ne3+ 29. Kh3 Qf3 30. fxe3 bxc4 31. bxc4 g5 32. c5 g4# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. d4 Qxc3+ 5. bxc3 Nf6 6. Bb5+ Nbd7 7. Qe2 a6 8. Bd3 e6 9. g4 c6 10. Bd2 Nxg4 11. Qxg4 Nf6 12. Qg2 Nd7 13. h4 Nf6 14. Rh3 Bd7 15. Bf1 b5 16. a4 Rd8 17. Re3 Ke7 18. Qh1 bxa4 19. Bh3 c5 20. dxc5 Be8 21. Rd3 Rxd3 22. cxd3 h5 23. Qb7+ Kd8 24. Qb8+ Kd7 25. Rb1 Bxc5 26. Rb7+ Kc6 27. Bg2+ Ne4 28. Bxe4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nc3 Nf6 3. Bf4 a6 4. e3 e6 5. g4 Bb4 6. Qe2 Ne4 7. a3 Ba5 8. Bg3 c5 9. dxc5 Nxc3 10. Qd2 Ne4 11. b4 Nxd2 12. Kxd2 Bc7 13. a4 Bd7 14. Nf3 Bxg3 15. hxg3 Qf6 16. Bxa6 bxa6 17. Ke2 Qc3 18. Rhc1 Qc4+ 19. Kd2 Qxg4 20. Nd4 e5 21. f3 Qg6 22. Re1 h6 23. e4 O-O 24. exd5 exd4 25. Rec1 Qxg3 26. c3 Qf2+ 27. Kd1 Re8 28. cxd4 Qe2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. g3 dxc4 5. Bg2 Qxd4 6. Nxd4 Be7 7. O-O c5 8. Nb5 Nbd7 9. Nc7+ Kf8 10. Nxa8 b5 11. g4 Nxg4 12. f3 Nxh2 13. Rf2 Nxf3+ 14. exf3 Bf6 15. Be3 Ke7 16. f4 h5 17. Bc6 Bxb2 18. Rxb2 Kf6 19. Nc3 a6 20. Ne4+ Kg6 21. Rg2+ Kf5 22. Rg5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Bg5 c5 5. Bxf6 Qxf6 6. e3 cxd4 7. exd4 Bxc3+ 8. bxc3 b6 9. Nf3 Bb7 10. Nd2 O-O 11. h3 Re8 12. Qc2 g6 13. Rc1 Na6 14. Rh2 e5 15. d5 e4 16. Nxe4 Qh4 17. Bd3 Nc5 18. Ke2 Nxd3 19. Qxd3 Rxe4+ 20. Kd1 Rae8 21. Rh1 Qxf2 22. Qd2 Re2 23. Kc2 Rxd2+ 24. Kb1 Rxa2 25. c5 Qb2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 d6 4. e4 Na6 5. f3 e5 6. Nge2 exd4 7. Nxd4 Be7 8. Be3 Nc5 9. Qc2 O-O 10. O-O-O a6 11. g4 Ncxe4 12. Nxe4 Re8 13. h3 d5 14. cxd5 Nxd5 15. Bh6 Bxg4 16. hxg4 c5 17. Nf5 gxf5 18. gxf5 b6 19. Qg2+ Kh8 20. Qg7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. Nc3 d4 3. Ne4 f5 4. Nxd4 fxe4 5. e3 Nf6 6. c3 e5 7. Bc4 exd4 8. exd4 Nc6 9. O-O Be7 10. Re1 Bg4 11. Qxg4 Nxg4 12. Rf1 Qd6 13. Re1 Qxh2+ 14. Kf1 Rf8 15. Ke2 Nxf2 16. a4 Qh5+ 17. Kf1 Nh3+ 18. Bf7+ Rxf7# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. c4 e5 2. g3 f5 3. d4 d6 4. Nc3 Nd7 5. Bg2 exd4 6. Qxd4 Ngf6 7. Nh3 b5 8. Bxa8 c5 9. Qd1 bxc4 10. O-O Be7 11. Bg2 a6 12. b3 cxb3 13. Qxb3 a5 14. Rb1 Ne5 15. Nf4 c4 16. Qd1 Kf8 17. Nfd5 Nxd5 18. Nxd5 Ke8 19. Bf4 Nd7 20. Qc2 Nf6 21. Nxf6+ Bxf6 22. Qxc4 Ke7 23. Rfc1 Be6 24. Rb7+ Bd7 25. Bxd6+ Kxd6 26. Qc5+ Ke6 27. Bd5+ Ke5 28. f4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. Ke2 Qe7 8. Nbd2 Be6 9. Kf1 O-O-O 10. d4 Nd7 11. dxe5 Nxe5 12. Nd4 Bg4 13. Qxg4+ Nxg4 14. f3 Nxh2+ 15. Ke1 Bg3+ 16. Ke2 Rxd4 17. c3 Rdd8 18. Rxh2 Bxh2 19. Nf1 Be5 20. Bd2 Qd6 21. Rd1 Qd3+ 22. Kf2 Qc2 23. Ke1 Rd6 24. c4 Rhd8 25. Rc1 Bg3+ 26. Nxg3 Qxd2+ 27. Kf1 Qxc1+ 28. Ke2 Rd2+ 29. Ke3 Rxg2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 e5 5. Bb5+ Nd7 6. Nf5 a6 7. Ba4 b5 8. Bb3 Nc5 9. Nc3 Bxf5 10. exf5 Nf6 11. Bg5 Be7 12. Bxf6 Bxf6 13. Qf3 O-O 14. O-O-O Re8 15. Ne4 Nxe4 16. Qxe4 Bg5+ 17. Kb1 Bh4 18. Rd3 Bxf2 19. f6 gxf6 20. Rf1 f5 21. Qxf5 Qe7 22. Rxf2 Rf8 23. Rh3 Rae8 24. Qxh7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. exd5 cxd5 8. O-O Be7 9. Nc3 O-O 10. Bg5 Be6 11. Rc1 c5 12. Re1 Rc8 13. Bxf6 Bxf6 14. Qe2 c4 15. Qxe6 fxe6 16. Bxc4 Rxc4 17. Kf1 Bg5 18. Nb5 Bxc1 19. Rxc1 Qf6 20. Nxa7 Qxf2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. c4 e6 3. Nf3 dxc4 4. e4 Bb4+ 5. Bd2 Bxd2+ 6. Nbxd2 f5 7. Bxc4 b5 8. Bxb5+ c6 9. Bc4 fxe4 10. Nxe4 Ba6 11. Bxe6 h5 12. Nc5 Rh6 13. Bxg8 Qe7+ 14. Kd2 Rg6 15. Re1 Bb5 16. Qb3 Rxg2 17. Rxe7+ Kxe7 18. Qf7+ Kd8 19. Ne6+ Kc8 20. Qc7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 dxe5 5. dxe5 Bg4 6. h3 Bxf3 7. gxf3 e6 8. Qxd5 Qxd5 9. Nd2 Qxe5+ 10. Kd1 Nc6 11. Bd3 Rd8 12. Re1 Qh5 13. Bxh7 Rxh7 14. b3 Qxf3+ 15. Re2 Qxh3 16. a3 Qh1+ 17. Re1 Qf3+ 18. Re2 Rh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. c4 Ne4 3. Qc2 Nxf2 4. Kxf2 c6 5. d4 e6 6. e4 b5 7. c5 d5 8. exd5 Ba6 9. d6 Bxd6 10. cxd6 f6 11. h4 Qxd6 12. b4 Qxd4+ 13. Nxd4 g5 14. hxg5 fxg5 15. Nxe6 Ke7 16. Bxg5+ Kxe6 17. Qe4+ Kd6 18. Qe7+ Kd5 19. Nc3+ Kd4 20. Bf6# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. d4 Nxe4 4. dxe5 Bc5 5. Qxd7+ Bxd7 6. Nc3 Nxc3 7. bxc3 Qe7 8. Bc4 h6 9. O-O c6 10. Rb1 b5 11. Bd3 O-O 12. Bxb5 cxb5 13. Re1 Qe8 14. a4 bxa4 15. Be3 Be7 16. Rec1 Nc6 17. Nd2 Nxe5 18. Bd4 Ng6 19. Bxg7 Kxg7 20. Re1 Qc8 21. Rxe7 Nxe7 22. c4 Rd8 23. Re1 Be6 24. Ne4 Qxc4 25. h4 a3 26. c3 a2 27. Kh2 Rab8 28. f3 Rb1 29. Re3 Nf5 30. Re1 Rxe1 31. g4 Qf1 32. h5 Qh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 e6 6. O-O Qc7 7. b3 b5 8. Bxb5+ Nc6 9. Ba3 cxd4 10. Nxd4 Bd7 11. Nxc6 Bxa3 12. Nxa3 a6 13. Ba4 Bxc6 14. Rc1 Rd8 15. Bxc6+ Qxc6 16. Qxd8+ Kxd8 17. Rxc6 Kd7 18. Rxa6 Ke8 19. Ra8+ Ke7 20. Rxh8 h5 21. Nb5 h4 22. Rd1 h3 23. Rxh3 Ne8 24. Na7 Kf8 25. Rh8+ Ke7 26. Nc8+ Kf6 27. Rxe8 g5 28. a4 Kf5 29. a5 Ke4 30. a6 f6 31. Nd6+ Ke5 32. f3 f5 33. Rf8 g4 34. Nc4# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. Bb5 Bb4 5. Bxc6 dxc6 6. Qe2 Nh5 7. Nxe5 Qg5 8. Qxh5 Qxh5 9. Nd3 a5 10. O-O Qh6 11. Re1 Be7 12. Rd1 g5 13. f4 gxf4 14. Ne2 f3 15. gxf3 Rg8+ 16. Ng3 Qh3 17. Re1 Rxg3+ 18. hxg3 Qxg3+ 19. Kf1 Qxf3+ 20. Kg1 Bh3 21. a3 Qg2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 Nxf2 6. Qe2+ Be7 7. Qxf2 c5 8. Bd3 cxd4 9. O-O Nc6 10. Nxd4 Nxd4 11. Qxd4 O-O 12. Nc3 b5 13. Qe4 h6 14. Qh7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nc3 d6 3. Bc4 e6 4. Bxe6 fxe6 5. Ke2 Be7 6. Ke1 Nf6 7. Ke2 O-O 8. h4 b5 9. e5 dxe5 10. Nf3 b4 11. Nxe5 Qc7 12. Ke1 Qxe5+ 13. Qe2 Qd4 14. Nb5 Qd7 15. a3 Ba6 16. Qf3 Nd5 17. Qb3 c4 18. Qg3 Bxb5 19. c3 Bd6 20. Qg4 bxa3 21. Ke2 Nc6 22. bxa3 Ne5 23. Qh3 Nf4+ 24. Ke3 Bc5+ 25. Ke4 Qd5# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 e6 2. d4 b5 3. Bxb5 c6 4. Bd3 f5 5. exf5 exf5 6. Nf3 Qe7+ 7. Be2 Ba6 8. Nc3 f4 9. O-O Bxe2 10. Nxe2 g5 11. Re1 g4 12. Nxf4 gxf3 13. Rxe7+ Kxe7 14. Qxf3 h5 15. Ng6+ Kd8 16. Qxf8+ Kc7 17. Nxh8 h4 18. Nf7 a5 19. Qd8+ Kb7 20. Nd6+ Ka6 21. Qc8+ Kb6 22. Qb7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 c6 2. d4 d5 3. c4 dxe4 4. d5 Nf6 5. Nc3 e6 6. Bg5 Be7 7. Rc1 exd5 8. cxd5 O-O 9. Bd2 cxd5 10. Qb3 d4 11. Nxe4 Nxe4 12. a3 Nxd2 13. Rxc8 Qxc8 14. Qxf7+ Rxf7 15. Bd3 Qc1+ 16. Ke2 Bg5 17. Bxh7+ Kxh7 18. Nf3 d3+ 19. Kxd3 Qc4# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. d4 Qxc3+ 5. bxc3 Nf6 6. h3 h6 7. Qf3 Kd7 8. g4 a5 9. g5 hxg5 10. Bxg5 Nh7 11. Bf4 f6 12. Qd5+ Ke8 13. Bd3 e5 14. Bg6+ Ke7 15. Qf7+ Kd6 16. dxe5+ Kc6 17. Be4+ Kb6 18. Be3+ c5 19. Rb1+ Ka6 20. Bxb7+ Ka7 21. Bxc8+ Nd7 22. Qxd7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nc3 Nf6 3. Bf4 a6 4. e3 e6 5. g4 Bb4 6. Ne2 Be7 7. Nxd5 Nxd5 8. h3 Nxf4 9. Nxf4 Qd6 10. c3 Bd7 11. Bc4 Qc6 12. Bxa6 Qxa6 13. Nd3 Bb5 14. a3 Bxd3 15. Qb3 Be4 16. O-O-O Bxh1 17. Rxh1 Nd7 18. Re1 Nb6 19. Kd1 Nc4 20. Qxc4 Qxc4 21. Re2 Qd3+ 22. Ke1 Qb1+ 23. Kd2 Qxb2+ 24. Kd3 Qb5+ 25. c4 Qb1+ 26. Kd2 Rxa3 27. d5 Bb4# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e5 3. dxe5 Ng4 4. e4 Nxf2 5. Kxf2 Nc6 6. Nf3 Bb4 7. Bg5 Qxg5 8. Nxg5 b5 9. a3 f6 10. exf6 gxf6 11. Qh5+ Kd8 12. Nf7+ Ke7 13. Nxh8 Nd4 14. axb4 a6 15. Qf7+ Kd6 16. c5+ Ke5 17. Qd5+ Kf4 18. g3+ Kg4 19. h3# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. h4 d5 5. cxd5 exd5 6. Qb3 c5 7. h5 Nc6 8. dxc5 d4 9. Qxb4 Nxb4 10. Nb5 O-O 11. a3 Nc2+ 12. Kd2 Nxa1 13. Nd6 Qa5+ 14. Kd1 Qxc5 15. Nxc8 Qc2+ 16. Ke1 Qxc1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 d6 4. Nf3 Nbd7 5. e4 e5 6. Be3 g5 7. Bxg5 exd4 8. Nxd4 Be7 9. Nf5 h6 10. Bh4 Nxe4 11. Bxe7 Nxc3 12. Qd4 Qxe7+ 13. Nxe7 Ne4 14. Nd5 Nxf2 15. Qxh8+ Nf8 16. Kxf2 f6 17. Qg7 Bf5 18. Qe7# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. Nf3 d5 2. h3 Nf6 3. e3 c5 4. Nc3 e6 5. Nxd5 exd5 6. a3 Nc6 7. Be2 Be7 8. d4 c4 9. Ne5 Bd6 10. Nxf7 Kxf7 11. Bxc4 dxc4 12. O-O Re8 13. d5 Nb8 14. e4 Rxe4 15. b3 Qe7 16. f3 Bc5+ 17. Kh1 Rd4 18. bxc4 Rxd1 19. Rxd1 Qe5 20. Rb1 Bd6 21. h4 Qh2# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. c4 e5 2. g3 h6 3. Nf3 d5 4. Nxe5 f6 5. Ng6 dxc4 6. Nxh8 Qd4 7. Nc3 Bf5 8. e3 Qd8 9. Qh5+ Ke7 10. Qxf5 b5 11. Qe4+ Kd6 12. Nf7+ Kd7 13. Bh3+ f5 14. Bxf5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. Bxc6 dxc6 6. d3 Bd6 7. Nbd2 Be6 8. Nxe5 Bxe5 9. O-O Bf4 10. h4 Ng4 11. Nf3 Bxc1 12. Rxc1 O-O 13. b3 Re8 14. c4 c5 15. Re1 Qe7 16. Qe2 Rad8 17. a4 f6 18. h5 Qf7 19. Rc3 Qxh5 20. Rc2 Bd7 21. Nh4 Qxh4 22. g3 Qh2+ 23. Kf1 Qh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 f5 5. exf5 Nc6 6. Bb5 Bxf5 7. Nxf5 g6 8. Nd4 h6 9. Nxc6 bxc6 10. Bxc6+ Kf7 11. Qf3+ Nf6 12. Bxa8 d5 13. Bc6 Rh7 14. Nc3 a5 15. Bxd5+ e6 16. Bb3 Qe7 17. Be3 Rg7 18. O-O-O h5 19. Ne4 Rg8 20. Bc5 Rh8 21. Bxe7 Bxe7 22. Rd7 Rh7 23. Qxf6+ Ke8 24. Qxe6 Kf8 25. Qg8# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. Bd3 d5 7. exd5 cxd5 8. O-O Be7 9. Re1 O-O 10. c3 c5 11. Rxe7 Qxe7 12. b4 Re8 13. bxc5 Qe1+ 14. Qxe1 Rxe1+ 15. Bf1 Rxc1 16. h4 Ba6 17. c4 dxc4 18. a3 c3 19. h5 Rxf1+ 20. Kh2 c2 21. h6 c1=Q 22. hxg7 Qf4+ 23. g3 Qxf2+ 24. Kh3 Rh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 dxc4 5. e4 Bb4 6. Bxc4 Nxe4 7. O-O Nd6 8. Qa4+ Nc6 9. d5 Bxc3 10. dxc6 Ne4 11. cxb7+ Bd7 12. bxa8=Q Qxa8 13. Bb5 Nxf2 14. Bxd7+ Ke7 15. Rxf2 Rd8 16. bxc3 Kd6 17. Ba3+ Kd5 18. Rd2# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 dxe5 5. dxe5 Bg4 6. h3 Bxf3 7. gxf3 e6 8. Qxd5 exd5 9. Nc3 Bb4 10. a3 Bxc3+ 11. bxc3 Nd7 12. f4 c6 13. Bg2 Qa5 14. Kd2 d4 15. Rb1 Qxc3+ 16. Kd1 d3 17. Rb2 Nc5 18. Bxc6+ bxc6 19. f5 dxc2+ 20. Rxc2 Qf3+ 21. Ke1 O-O-O 22. Rxc5 Rd1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. Nf3 Nf6 2. c4 Nc6 3. d4 e5 4. Nxe5 Bb4+ 5. Bd2 Bxd2+ 6. Qxd2 Qe7 7. Nxc6 bxc6 8. Nc3 Ba6 9. b3 Ne4 10. Nxe4 f6 11. Nc3 Qxe2+ 12. Bxe2 Kf7 13. a3 h5 14. Qc2 Rhe8 15. O-O-O Rxe2 16. Qxe2 h4 17. Qh5+ Ke7 18. Rhe1+ Kd6 19. c5# 1-0
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "NextGenChessEngine"]
+[Black "Stockfish 19"]
+[Result "0-1"]
+[Termination "CHECKMATE"]
+
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. Bd3 Be7 7. O-O Nc6 8. Nbd2 Nxd2 9. Bxd2 Bg4 10. Bxh7 Rxh7 11. Bc3 Kf8 12. h4 g6 13. Re1 Bxh4 14. Re3 Kg7 15. Rc1 Be7 16. Rxe7 Qxe7 17. a3 Rah8 18. a4 Rh1# 0-1
+
+[Event "NextGen vs Stockfish 19"]
+[Site "?"]
+[Date "2026.10.12"]
+[Round "?"]
+[White "Stockfish 19"]
+[Black "NextGenChessEngine"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+
+1. d4 d5 2. Nf3 Nf6 3. c4 dxc4 4. e3 c5 5. Bxc4 e6 6. O-O cxd4 7. exd4 Be7 8. Nc3 O-O 9. Re1 a6 10. d5 exd5 11. Nxd5 Nxd5 12. Qxd5 Nc6 13. Qe4 Bf6 14. Bd2 Bxb2 15. Ng5 Bxa1 16. Qxh7# 1-0
+

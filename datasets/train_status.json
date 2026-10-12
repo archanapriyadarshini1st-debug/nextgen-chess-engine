@@ -1,31 +1,31 @@
 {
-  "updated": "2026-10-12T14:54:14Z",
+  "updated": "2026-10-12T15:03:51Z",
   "played": 100,
   "wins": 0,
-  "losses": 100,
-  "draws": 0,
-  "score": 0.0,
-  "est_elo_vs_sf19_max": 2698.7215770318044,
-  "missed_moves_run": 715,
-  "missed_moves_all": 8470,
+  "losses": 98,
+  "draws": 2,
+  "score": 0.01,
+  "est_elo_vs_sf19_max": 2891.307271323982,
+  "missed_moves_run": 753,
+  "missed_moves_all": 9223,
   "weaknesses": {
-    "updated": "2026-10-12T14:54:14Z",
-    "games": 600,
+    "updated": "2026-10-12T15:03:51Z",
+    "games": 700,
     "results": {
-      "loss": 596,
-      "draw": 4
+      "loss": 694,
+      "draw": 6
     },
-    "missed_moves": 8470,
+    "missed_moves": 9223,
     "by_phase": {
       "opening": {
-        "moves": 3167,
-        "avg_cp_loss": 192.61351436690876,
-        "blunders": 513
+        "moves": 3465,
+        "avg_cp_loss": 205.55007215007214,
+        "blunders": 592
       },
       "middlegame": {
-        "moves": 5251,
-        "avg_cp_loss": 999.8861169301085,
-        "blunders": 883
+        "moves": 5706,
+        "avg_cp_loss": 1074.5389064143008,
+        "blunders": 1039
       },
       "endgame": {
         "moves": 52,
@@ -34,67 +34,67 @@
       }
     },
     "blunders_by_piece": {
-      "N": 1785,
-      "P": 2286,
-      "Q": 815,
-      "K": 1163,
-      "B": 1223,
-      "R": 1198
+      "N": 1915,
+      "P": 2524,
+      "Q": 897,
+      "K": 1278,
+      "B": 1337,
+      "R": 1272
     },
     "top_reasons": [
       [
         "positional improvement",
-        5426
+        5884
       ],
       [
         "develops a piece",
-        914
+        996
       ],
       [
         "occupies centre",
-        816
+        872
       ],
       [
         "you pushed a wing pawn instead",
-        464
+        511
       ],
       [
         "castles (king safety)",
-        153
+        165
       ],
       [
         "occupies centre; you pushed a wing pawn instead",
-        79
+        84
       ],
       [
         "gives check; forcing; you missed a check",
-        58
+        67
       ],
       [
         "develops a piece; you pushed a wing pawn instead",
-        55
+        59
       ],
       [
         "occupies centre; develops a piece",
-        52
+        54
       ],
       [
         "wins P; you missed a capture",
-        36
+        37
       ],
       [
         "wins P; occupies centre; you missed a capture",
-        27
+        31
       ],
       [
         "wins p; you missed a capture",
-        24
+        29
       ]
     ],
     "severity": {
-      "inaccuracy": 5372,
-      "blunder": 1411,
-      "mistake": 1687
+      "inaccuracy": 5598,
+      "blunder": 1646,
+      "mistake": 1979
     }
   }
 }
