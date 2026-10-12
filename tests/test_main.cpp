@@ -148,6 +148,48 @@ void test_nnue_binary_layout_and_score_scale() {
     std::filesystem::remove(path);
 }
 
+Move find_move_by_squares(Position& pos, int from, int to, int promo = 0) {
+    MoveList legal;
+    generate_moves(pos, legal, false);
+    for (int i = 0; i < legal.size; ++i) {
+        const Move m = legal.moves[i];
+        if (m.from() == from && m.to() == to &&
+            ((m.flags() & FLAG_PROMOTION) ? m.promo() == promo : promo == 0)) {
+            return m;
+        }
+    }
+    assert(false && "expected legal move not found");
+    return Move{};
+}
+
+void test_see_exchange_sequences() {
+    // e4xd5 is immediately a pawn win, but Black's e6 pawn recaptures.
+    // The exchange is therefore even, not the +90 cp returned by the old
+    // material-only shortcut.
+    Position equal_pawn_trade;
+    equal_pawn_trade.set_fen("4k3/8/4p3/3p4/4P3/8/8/4K3 w - - 0 1");
+    Move pawn_capture = find_move_by_squares(
+        equal_pawn_trade, square_of(4, 3), square_of(3, 4));
+    assert((pawn_capture.flags() & FLAG_CAPTURE) != 0);
+    assert(see(equal_pawn_trade, pawn_capture) == 0);
+    assert(see_ge(equal_pawn_trade, pawn_capture, 0));
+
+    // Qxd5 wins a pawn but loses the queen to c6xd5: net -800 cp.
+    Position losing_queen_capture;
+    losing_queen_capture.set_fen("4k3/8/2p5/3p4/8/8/8/3QK3 w - - 0 1");
+    Move queen_capture = find_move_by_squares(
+        losing_queen_capture, square_of(3, 0), square_of(3, 4));
+    assert(see(losing_queen_capture, queen_capture) == -800);
+    assert(!see_ge(losing_queen_capture, queen_capture, 0));
+
+    // Quiet promotions are tactical too; promotion gain is included even
+    // when no piece is captured on the destination square.
+    Position quiet_promotion;
+    quiet_promotion.set_fen("7k/P7/8/8/8/8/8/7K w - - 0 1");
+    Move promote_queen = find_move_by_squares(
+        quiet_promotion, square_of(0, 6), square_of(0, 7), 4);
+    assert(see(quiet_promotion, promote_queen) == 800);
+}
 void test_search_finds_mate_in_one() {
     // White to move: Qg7# is mate. Quiescence search must not stand pat
     // while Black is in check, and must score a checked position with no
@@ -224,6 +266,7 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_see_exchange_sequences();
     test_nnue_binary_layout_and_score_scale();
     test_capture_only_generation_keeps_quiet_promotions();
     test_null_move_does_not_enter_repetition_history();
