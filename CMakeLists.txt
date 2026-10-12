@@ -38,4 +38,9 @@ if(BUILD_TESTS)
   add_executable(engine_tests tests/test_main.cpp)
   target_link_libraries(engine_tests PRIVATE chesscore)
   add_test(NAME engine_tests COMMAND engine_tests)
+
+  # Register the extended published perft positions in CI as well.
+  add_executable(perft_suite_extended tests/perft_suite_extended.cpp)
+  target_link_libraries(perft_suite_extended PRIVATE chesscore)
+  add_test(NAME perft_suite_extended COMMAND perft_suite_extended)
 endif()
