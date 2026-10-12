@@ -7,13 +7,13 @@ namespace chess {
 // Do not infer tablebase WDL from material alone: K+P vs K is not always a
 // win, and returning mate-like scores for KQ/KR endings invents distances.
 bool SyzygyTablebase::set_path(const std::string& path) {
-    return init(path);
+    loaded_ = init(path);
+    maxPieces_ = 0;
+    return loaded_;
 }
 
 bool SyzygyTablebase::init(const std::string& path) {
     (void)path;
-    loaded_ = false;
-    maxPieces_ = 0;
     std::cout << "info string Syzygy probing unavailable: Fathom backend is not enabled\n";
     return false;
 }
