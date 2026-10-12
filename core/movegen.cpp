@@ -1,5 +1,7 @@
 #include "movegen.h"
 #include <algorithm>
+#include <array>
+#include <cstdlib>
 
 namespace chess {
 namespace {
@@ -32,6 +34,56 @@ int piece_val(Piece p) {
         case Piece::WQ: case Piece::BQ: return 900;
         case Piece::WK: case Piece::BK: return 20000;
         default: return 0;
+    }
+}
+
+
+bool attacks_square(const std::array<Piece, 64>& board, int from, int to) {
+    if (from == to || from < 0 || from >= 64 || to < 0 || to >= 64) return false;
+    const Piece p = board[from];
+    if (p == Piece::None) return false;
+    const int df = file_of(to) - file_of(from);
+    const int dr = rank_of(to) - rank_of(from);
+    const int af = std::abs(df);
+    const int ar = std::abs(dr);
+
+    switch (p) {
+        case Piece::WP: return dr == 1 && af == 1;
+        case Piece::BP: return dr == -1 && af == 1;
+        case Piece::WN: case Piece::BN:
+            return (af == 1 && ar == 2) || (af == 2 && ar == 1);
+        case Piece::WK: case Piece::BK:
+            return std::max(af, ar) == 1;
+        default: break;
+    }
+
+    const bool bishop_like = p == Piece::WB || p == Piece::BB ||
+                             p == Piece::WQ || p == Piece::BQ;
+    const bool rook_like = p == Piece::WR || p == Piece::BR ||
+                           p == Piece::WQ || p == Piece::BQ;
+    const bool diagonal = af == ar && af > 0;
+    const bool straight = (df == 0) != (dr == 0);
+    if (!(bishop_like && diagonal) && !(rook_like && straight)) return false;
+
+    const int step_f = (df > 0) - (df < 0);
+    const int step_r = (dr > 0) - (dr < 0);
+    int file = file_of(from) + step_f;
+    int rank = rank_of(from) + step_r;
+    while (file != file_of(to) || rank != rank_of(to)) {
+        if (board[square_of(file, rank)] != Piece::None) return false;
+        file += step_f;
+        rank += step_r;
+    }
+    return true;
+}
+
+Piece promotion_piece(Color side, std::uint32_t promo) {
+    switch (promo) {
+        case 1: return side == Color::White ? Piece::WN : Piece::BN;
+        case 2: return side == Color::White ? Piece::WB : Piece::BB;
+        case 3: return side == Color::White ? Piece::WR : Piece::BR;
+        case 4: return side == Color::White ? Piece::WQ : Piece::BQ;
+        default: return Piece::None;
     }
 }
 
@@ -152,15 +204,88 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
 
 // SEE - Static Exchange Evaluation
 int see(const Position& pos, Move m) {
-    const auto& b = pos.board();
-    int from = m.from(), to = m.to();
-    Piece moving = b[from];
-    Piece captured = b[to];
-    if (m.flags() & FLAG_EN_PASSANT) captured = (pos.side_to_move()==Color::White? Piece::BP: Piece::WP);
-    if (captured==Piece::None && !(m.flags() & FLAG_CAPTURE)) return 0;
-    int gain = piece_val(captured);
-    if (m.flags() & FLAG_PROMOTION) gain += piece_val(Piece::WQ) - piece_val(Piece::WP);
-    return gain - piece_val(moving)/10;
+    const auto& original = pos.board();
+    const int from = m.from();
+    const int to = m.to();
+    if (from < 0 || from >= 64 || to < 0 || to >= 64) return 0;
+
+    const Piece moving = original[from];
+    if (moving == Piece::None) return 0;
+    const Color us = pos.side_to_move();
+    const int capture_square = (m.flags() & FLAG_EN_PASSANT)
+        ? (us == Color::White ? to - 8 : to + 8)
+        : to;
+    const Piece captured = (capture_square >= 0 && capture_square < 64)
+        ? original[capture_square] : Piece::None;
+    const bool is_capture = captured != Piece::None || (m.flags() & FLAG_CAPTURE);
+    const bool is_promotion = (m.flags() & FLAG_PROMOTION) != 0;
+    if (!is_capture && !is_promotion) return 0;
+
+    std::array<Piece, 64> board = original;
+    int gain[64]{};
+    gain[0] = piece_val(captured);
+
+    Piece occupant = moving;
+    if (is_promotion) {
+        occupant = promotion_piece(us, m.promo());
+        if (occupant == Piece::None) return 0;
+        gain[0] += piece_val(occupant) - piece_val(moving);
+    }
+
+    // Apply the candidate capture/promotion to a local board. En passant
+    // removes the pawn from its actual square, which can also open a rook or
+    // bishop line onto the exchange square.
+    board[from] = Piece::None;
+    if (capture_square != to && capture_square >= 0 && capture_square < 64)
+        board[capture_square] = Piece::None;
+    board[to] = occupant;
+
+    Color side = opposite(us);
+    int depth = 0;
+    while (depth < 62) {
+        int attacker_square = -1;
+        Piece attacker = Piece::None;
+        int least_value = 1'000'000;
+
+        // Recompute attackers after every removal so x-rays are revealed.
+        // Pinned-piece legality is intentionally not simulated: SEE is a fast
+        // pruning heuristic, not a full legal-move search.
+        for (int sqi = 0; sqi < 64; ++sqi) {
+            const Piece candidate = board[sqi];
+            if (candidate == Piece::None || piece_color(candidate) != side) continue;
+            const int val = piece_val(candidate);
+            if (val >= least_value) continue;
+            if (attacks_square(board, sqi, to)) {
+                least_value = val;
+                attacker_square = sqi;
+                attacker = candidate;
+            }
+        }
+        if (attacker_square < 0) break;
+
+        ++depth;
+        int next_gain = piece_val(board[to]) - gain[depth - 1];
+        Piece arriving = attacker;
+        const bool promotes =
+            (attacker == Piece::WP && rank_of(to) == 7) ||
+            (attacker == Piece::BP && rank_of(to) == 0);
+        if (promotes) {
+            arriving = attacker == Piece::WP ? Piece::WQ : Piece::BQ;
+            next_gain += piece_val(arriving) - piece_val(attacker);
+        }
+        gain[depth] = next_gain;
+        board[attacker_square] = Piece::None;
+        board[to] = arriving;
+        side = opposite(side);
+    }
+
+    // Work backwards: each side may stop the exchange instead of accepting an
+    // unfavorable continuation. gain[0] is the net value of the initial move.
+    while (depth > 0) {
+        gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+        --depth;
+    }
+    return gain[0];
 }
 
 bool see_ge(const Position& pos, Move m, int threshold) {
