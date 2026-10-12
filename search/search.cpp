@@ -274,7 +274,7 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
             else tbScore = 0;
             TTFlag flag = (*wdl==0? TTFlag::Exact : (*wdl>0? TTFlag::Beta: TTFlag::Alpha));
             if (flag==TTFlag::Exact || (flag==TTFlag::Beta && tbScore>=beta) || (flag==TTFlag::Alpha && tbScore<=alpha)) {
-                tt_.store(pos.zobrist(), depth, tbScore, flag, Move{}, staticEval, ply);
+                tt_.store(pos.zobrist(), depth, value_to_tt(tbScore, ply), flag, Move{}, staticEval, ply);
                 return tbScore;
             }
         }
@@ -433,7 +433,7 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
     if (best_score <= alpha0) flag = TTFlag::Alpha;
     else if (best_score >= beta0) flag = TTFlag::Beta;
 
-    tt_.store(pos.zobrist(), depth, best_score, flag, best, staticEval, ply);
+    tt_.store(pos.zobrist(), depth, value_to_tt(best_score, ply), flag, best, staticEval, ply);
     return best_score;
 }
 
