@@ -36,23 +36,37 @@ bool NNUE::load(const std::string& path) {
     if (path.empty()) { loaded_=false; return false; }
     std::ifstream in(path, std::ios::binary);
     if (!in) { loaded_=false; return false; }
-    // Expected format: feature_weights[FT*HT1] int16, feature_bias[HT1] int16, l1_weights[512*32] int16, l1_bias[32] int32, l2_weights[32] int16, bias int32
-    // For demo, if file not exactly matching, we initialize with small random
+    // Binary layout (little-endian):
+    // feature_weights[FT][HT1] int16, feature_bias[HT1] int16,
+    // l1_weights[2*HT1][HT2] int16, l1_bias[HT2] int32,
+    // l2_weights[HT2] int16, l2_bias int32.
+    // Reject truncated AND oversized files so an old incompatible network
+    // can never be mistaken for a valid compact-feature model.
     try {
         feature_weights_.resize(NNUE_FT_SIZE * NNUE_HT1);
         feature_bias_.resize(NNUE_HT1);
-        l1_weights_.resize(NNUE_HT1*2 * NNUE_HT2);
+        l1_weights_.resize(NNUE_HT1 * 2 * NNUE_HT2);
         l1_bias_.resize(NNUE_HT2);
         l2_weights_.resize(NNUE_HT2);
-        in.read(reinterpret_cast<char*>(feature_weights_.data()), feature_weights_.size()*sizeof(int16_t));
-        in.read(reinterpret_cast<char*>(feature_bias_.data()), feature_bias_.size()*sizeof(int16_t));
-        in.read(reinterpret_cast<char*>(l1_weights_.data()), l1_weights_.size()*sizeof(int16_t));
-        in.read(reinterpret_cast<char*>(l1_bias_.data()), l1_bias_.size()*sizeof(int32_t));
-        in.read(reinterpret_cast<char*>(l2_weights_.data()), l2_weights_.size()*sizeof(int16_t));
+
+        in.read(reinterpret_cast<char*>(feature_weights_.data()),
+                static_cast<std::streamsize>(feature_weights_.size() * sizeof(int16_t)));
+        in.read(reinterpret_cast<char*>(feature_bias_.data()),
+                static_cast<std::streamsize>(feature_bias_.size() * sizeof(int16_t)));
+        in.read(reinterpret_cast<char*>(l1_weights_.data()),
+                static_cast<std::streamsize>(l1_weights_.size() * sizeof(int16_t)));
+        in.read(reinterpret_cast<char*>(l1_bias_.data()),
+                static_cast<std::streamsize>(l1_bias_.size() * sizeof(int32_t)));
+        in.read(reinterpret_cast<char*>(l2_weights_.data()),
+                static_cast<std::streamsize>(l2_weights_.size() * sizeof(int16_t)));
         in.read(reinterpret_cast<char*>(&l2_bias_), sizeof(int32_t));
-        loaded_ = static_cast<bool>(in) && in.gcount() == static_cast<std::streamsize>(sizeof(int32_t));
+
+        const bool read_ok = static_cast<bool>(in) &&
+                             in.gcount() == static_cast<std::streamsize>(sizeof(int32_t));
+        const bool exact_size = in.peek() == std::char_traits<char>::eof();
+        loaded_ = read_ok && exact_size;
     } catch (...) {
-        loaded_=false;
+        loaded_ = false;
     }
     if (!loaded_) {
         feature_weights_.clear();
@@ -134,15 +148,15 @@ Score NNUE::evaluate(const Position& pos, const Accumulator& acc) const {
         hidden[k] = std::clamp<int32_t>(hidden[k] / QA, 0, QB);
     }
 
-    // Final layer
-    int32_t out= l2_bias_;
-    for (int k=0;k<NNUE_HT2;++k) {
-        out += hidden[k] * l2_weights_[k];
+    // The exported network uses QB-scaled hidden activations and QB-scaled
+    // final weights, so both the bias and dot product are in QB*QB units.
+    // Convert back to the trainer's normalized output, then to centipawns.
+    std::int64_t out = l2_bias_;
+    for (int k = 0; k < NNUE_HT2; ++k) {
+        out += static_cast<std::int64_t>(hidden[k]) * l2_weights_[k];
     }
-    out /= QB;
-    // Scale to centipawns
-    out = out * NNUE_SCALE / (QA*QB/2);
-    return static_cast<Score>( stm==Color::White? out : -out );
+    const Score cp = static_cast<Score>(out * NNUE_SCALE / (QB * QB));
+    return stm == Color::White ? cp : -cp;
 }
 
 Score NNUE::evaluate(const Position& pos) const {

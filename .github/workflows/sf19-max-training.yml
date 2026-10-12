@@ -15,7 +15,7 @@ on:
           - "1000"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   train:
@@ -35,7 +35,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes build-essential cmake
           python -m pip install --upgrade pip
-          python -m pip install python-chess
+          python -m pip install python-chess numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python tests/test_nnue_teacher_export.py
 
       - name: Build and run correctness tests
         run: |
@@ -69,9 +71,48 @@ jobs:
           python tools/sf19_max_train.py train \
             --games "$GAMES" \
             --our-ms 120 \
-            --sf-ms 60 \
+            --sf-ms 120 \
             --analyse-depth 8 \
             --min-cp-loss 50
+
+      - name: Train compatible NNUE from Stockfish teacher labels
+        run: |
+          python training/train_nnue_teacher.py \
+            --dataset datasets/missed_best_moves.jsonl \
+            --out /tmp/nextgen_nnue.pt \
+            --report networks/nnue_training_report.json \
+            --epochs 20 \
+            --patience 4 \
+            --batch 128 \
+            --threads 2 \
+            --cpu
+          cp /tmp/nextgen_nnue.nnue networks/nnue.nnue
+          test -s networks/nnue.nnue
+
+      - name: Smoke-test engine with the trained network
+        run: |
+          set -o pipefail
+          printf 'uci\nsetoption name NNUEFile value networks/nnue.nnue\nisready\nposition startpos\ngo depth 6\nquit\n' \
+            | ./bin/chess_engine | tee /tmp/nextgen-nnue-smoke.txt
+          grep -F 'NNUEFile loaded networks/nnue.nnue' /tmp/nextgen-nnue-smoke.txt
+          grep -E '^bestmove [a-h][1-8][a-h][1-8]' /tmp/nextgen-nnue-smoke.txt
+
+      - name: Persist teacher data and validated NNUE model
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add datasets/games_vs_sf19.pgn datasets/games_vs_sf19.jsonl \
+            datasets/missed_best_moves.jsonl datasets/experience_book.txt \
+            datasets/weaknesses.json datasets/train_status.json \
+            networks/nnue_training_report.json
+          git add -f networks/nnue.nnue
+          if git diff --cached --quiet; then
+            echo "No teacher data or model changes to commit."
+          else
+            git commit -m "train: persist Stockfish 19 teacher labels and NNUE"
+            git push origin HEAD:main
+          fi
 
       - name: Upload PGN, labels, learned experience book, and reports
         if: always()
@@ -87,3 +128,5 @@ jobs:
             datasets/experience_book.txt
             datasets/weaknesses.json
             datasets/train_status.json
+            networks/nnue.nnue
+            networks/nnue_training_report.json

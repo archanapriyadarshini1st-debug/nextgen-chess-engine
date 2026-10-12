@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Fast regression test for the Python NNUE exporter and fixed-point layout."""
+from __future__ import annotations
+
+import tempfile
+import sys
+from pathlib import Path
+
+import numpy as np
+import torch
+
+# Make the repository root importable when this file is run directly by CI.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from training.train_nnue_teacher import (
+    FT_SIZE, HT1, HT2, QA, QB, TeacherNNUE, export_binary,
+)
+
+
+def main() -> None:
+    torch.manual_seed(1)
+    model = TeacherNNUE().cpu().eval()
+    with torch.no_grad():
+        model.ft.weight.zero_()
+        model.ft_bias.zero_()
+        model.l1.weight.zero_()
+        model.l1.bias.zero_()
+        model.l2.weight.zero_()
+        model.l2.bias.zero_()
+
+        # One active feature produces exactly +1.0 network output:
+        # feature 48 -> accumulator lane 0 -> hidden lane 0 -> output.
+        model.ft.weight[48, 0] = 1.0
+        model.l1.weight[0, 0] = 1.0
+        model.l2.weight[0, 0] = 1.0
+
+        indices = torch.tensor([48], dtype=torch.long)
+        offsets = torch.tensor([0], dtype=torch.long)
+        empty_indices = torch.tensor([], dtype=torch.long)
+        prediction = model(indices, offsets, empty_indices, offsets)
+        assert abs(float(prediction.item()) - 1.0) < 1e-6, prediction.item()
+
+    with tempfile.TemporaryDirectory(prefix="nextgen-nnue-export-") as folder:
+        output = Path(folder) / "synthetic.nnue"
+        export_binary(model, output)
+        expected_size = (
+            FT_SIZE * HT1 * 2 + HT1 * 2
+            + HT1 * 2 * HT2 * 2 + HT2 * 4 + HT2 * 2 + 4
+        )
+        assert output.stat().st_size == expected_size
+
+        raw = output.read_bytes()
+        offset = 0
+
+        def read_i16(count: int) -> np.ndarray:
+            nonlocal offset
+            size = count * 2
+            part = np.frombuffer(raw[offset:offset + size], dtype=np.int16)
+            offset += size
+            return part
+
+        def read_i32(count: int) -> np.ndarray:
+            nonlocal offset
+            size = count * 4
+            part = np.frombuffer(raw[offset:offset + size], dtype=np.int32)
+            offset += size
+            return part
+
+        ft_weights = read_i16(FT_SIZE * HT1).reshape(FT_SIZE, HT1)
+        ft_bias = read_i16(HT1)
+        l1_weights = read_i16(2 * HT1 * HT2).reshape(2 * HT1, HT2)
+        l1_bias = read_i32(HT2)
+        l2_weights = read_i16(HT2)
+        l2_bias = read_i32(1)
+
+        assert int(ft_weights[48, 0]) == QA
+        assert int(ft_bias[0]) == 0
+        assert int(l1_weights[0, 0]) == QB
+        assert int(l1_bias[0]) == 0
+        assert int(l2_weights[0]) == QB
+        assert int(l2_bias[0]) == 0
+        assert offset == expected_size
+        print(f"NNUE exporter regression passed: {expected_size} bytes; synthetic output +400 cp")
+
+
+if __name__ == "__main__":
+    main()

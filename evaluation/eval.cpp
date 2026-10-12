@@ -317,16 +317,20 @@ static std::once_flag g_nnue_flag;
 
 void try_load_nnue() {
     std::call_once(g_nnue_flag, [](){
+        // Respect a network explicitly loaded with the UCI NNUEFile option.
+        if (g_nnue.is_loaded()) return;
         const char* paths[] = {"networks/nnue.nnue","/home/user/nextgen-chess-engine/networks/nnue.nnue","nnue.nnue","/tmp/nnue.nnue"};
-        for(auto p: paths){
-            if (g_nnue.load(p)) {
-                break;
-            }
+        for (auto p : paths) {
+            if (g_nnue.load(p)) break;
         }
     });
 }
 
 } // namespace
+
+bool load_evaluation_nnue(const std::string& path) {
+    return !path.empty() && g_nnue.load(path);
+}
 
 Score evaluate_handcrafted(const Position& pos) {
     Score score=0;
@@ -388,14 +392,16 @@ Score evaluate_handcrafted(const Position& pos) {
 }
 
 Score evaluate(const Position& pos) {
-    // The shipped 21MB HalfKP net does NOT match this engine:
-    //  - trainer used 10 own/enemy piece types; C++ used 12 absolute types including kings
-    //  - PyTorch Linear weight is [HT1][FT], C++ indexed [FT][HT1] (transposed)
-    //  - trained on self-play evals (loss 0.0 overfit), not Stockfish labels
-    // Mixing it in was injecting noise. Classical eval only until a matching net exists.
-    try_load_nnue(); // keep load path for a future correctly-exported net
-    (void)g_nnue;
-    return evaluate_handcrafted(pos);
+    try_load_nnue();
+    if (!g_nnue.is_loaded()) return evaluate_handcrafted(pos);
+
+    // The teacher network is trained to approximate Stockfish search scores.
+    // Blend it with the handcrafted evaluator initially so imperfect training
+    // data cannot completely erase known material/king-safety terms.
+    const Score neural = g_nnue.evaluate(pos);
+    const Score classical = evaluate_handcrafted(pos);
+    const Score blended = (neural * 70 + classical * 30) / 100;
+    return std::clamp(blended, -10000, 10000);
 }
 
 } // namespace chess
