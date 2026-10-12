@@ -504,35 +504,74 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
             // WORSE than -INF (-30000), so `score > -INF` never fires when
             // every root move is getting mated — that used to emit bestmove 0000.
             Move fallback = root.moves[0];
-            if (parallel_threads > 1 && depth >= 4 && root.size >= 8) {
-                struct RootEval { Move move; Score score; int seldepth; bool ok; };
+            // Root splitting is only enabled for untimed fixed-depth/infinite
+            // searches. Timed searches stay on the main search path so that no
+            // worker can outlive the caller's time budget.
+            if (parallel_threads > 1 && limit_ms_ <= 0 && depth >= 4 && root.size >= 8) {
+                struct RootEval {
+                    Move move;
+                    Score score;
+                    int seldepth;
+                    std::uint64_t nodes;
+                    bool ok;
+                };
+                const unsigned worker_count = std::min<unsigned>(
+                    parallel_threads, static_cast<unsigned>(root.size));
                 std::vector<std::future<RootEval>> tasks;
-                tasks.reserve(root.size);
+                tasks.reserve(worker_count);
                 const int launch_depth = depth - 1;
-                for (int i = 0; i < root.size; ++i) {
-                    Move m = root.moves[i];
-                    tasks.emplace_back(std::async(std::launch::async, [this, pos, m, launch_depth]() mutable {
-                        Search local;
-                        local.tt_ = this->tt_;
-                        local.history_ = this->history_;
-                        Position p = pos;
-                        if (!p.make_move(m)) return RootEval{m, -MATE_SCORE, 0, false};
-                        Score sc = -local.negamax(p, launch_depth, -INF, INF, 1, false);
-                        return RootEval{m, sc, local.seldepth_, true};
-                    }));
+
+                // Give each worker a subset of root moves. The previous
+                // implementation launched one OS task per legal move (often
+                // 20+), ignoring Threads and copying the hash table per task.
+                for (unsigned worker = 0; worker < worker_count; ++worker) {
+                    tasks.emplace_back(std::async(
+                        std::launch::async,
+                        [this, pos, &root, worker, worker_count, launch_depth]() mutable {
+                            Search local;
+                            local.tt_ = this->tt_;
+                            local.history_ = this->history_;
+                            local.start_ = this->start_;
+                            local.limit_ms_ = this->limit_ms_;
+
+                            Score local_best = -MATE_SCORE - 1;
+                            Move local_move{};
+                            bool have_move = false;
+                            for (int i = static_cast<int>(worker);
+                                 i < root.size;
+                                 i += static_cast<int>(worker_count)) {
+                                Position p = pos;
+                                Move m = root.moves[i];
+                                if (!p.make_move(m)) continue;
+                                Score sc = -local.negamax(
+                                    p, launch_depth, -INF, INF, 1, false);
+                                if (!have_move || sc > local_best) {
+                                    local_best = sc;
+                                    local_move = m;
+                                    have_move = true;
+                                }
+                            }
+                            return RootEval{local_move, local_best,
+                                            local.seldepth_, local.nodes_, have_move};
+                        }));
                 }
+
                 Score local_best = -MATE_SCORE - 1;
                 Move local_move = fallback;
                 int local_seldepth = 0;
                 bool have_move = false;
                 for (auto& fut : tasks) {
-                    auto ev = fut.get();
+                    RootEval ev = fut.get();
+                    nodes_ += ev.nodes;
                     if (!ev.ok) continue;
-                    if (!have_move || ev.score > local_best) { local_best = ev.score; local_move = ev.move; have_move = true; }
+                    if (!have_move || ev.score > local_best) {
+                        local_best = ev.score;
+                        local_move = ev.move;
+                        have_move = true;
+                    }
                     local_seldepth = std::max(local_seldepth, ev.seldepth);
                 }
-                if (!have_move) local_move = fallback;
-                best = local_move;
+                best = have_move ? local_move : fallback;
                 best_score = have_move ? local_best : -MATE_SCORE;
                 previous = best_score;
                 seldepth_ = std::max(seldepth_, local_seldepth);
