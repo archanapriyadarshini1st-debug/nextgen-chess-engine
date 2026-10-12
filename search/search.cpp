@@ -165,41 +165,55 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
 
     auto* ttEntry = tt_.probe(pos.zobrist());
     Move tt_move{};
-    Score tt_score = 0;
-    if (ttEntry && ttEntry->key==pos.zobrist()) {
+    if (ttEntry && ttEntry->key == pos.zobrist()) {
         tt_move = ttEntry->best;
-        tt_score = value_from_tt(ttEntry->score, ply);
+        Score tt_score = value_from_tt(ttEntry->score, ply);
         bool isMate = std::abs(tt_score) >= 10000;
-        if (ttEntry->depth>=0 && !isMate) {
-            if (ttEntry->flag==TTFlag::Exact) return tt_score;
-            if (ttEntry->flag==TTFlag::Beta && tt_score>=beta) return tt_score;
-            if (ttEntry->flag==TTFlag::Alpha && tt_score<=alpha) return tt_score;
+        if (ttEntry->depth >= 0 && !isMate) {
+            if (ttEntry->flag == TTFlag::Exact) return tt_score;
+            if (ttEntry->flag == TTFlag::Beta && tt_score >= beta) return tt_score;
+            if (ttEntry->flag == TTFlag::Alpha && tt_score <= alpha) return tt_score;
         }
     }
 
-    Score stand = evaluate(pos);
-    if (stand >= beta) return beta;
-    if (stand > alpha) alpha = stand;
+    // Standing pat is only legal when the side to move is not in check.
+    // In check, every legal evasion must be searched; evaluating the checked
+    // position as if the side could pass can hide forced mates and tactics.
+    const bool in_check = pos.in_check(pos.side_to_move());
+    Score stand = -INF;
+    if (!in_check) {
+        stand = evaluate(pos);
+        if (stand >= beta) return beta;
+        if (stand > alpha) alpha = stand;
+    }
 
     MoveList moves;
-    if (pos.in_check(pos.side_to_move())) generate_moves(pos, moves, false);
-    else generate_moves(pos, moves, true);
-
-    // delta pruning + SEE pruning
+    generate_moves(pos, moves, !in_check);
     order_moves(pos, moves, tt_move, ply);
+
+    // Move generation returns only legal moves. No legal evasion means mate.
+    if (in_check && moves.size == 0) return -MATE_SCORE + ply;
 
     for (int i = 0; i < moves.size; ++i) {
         Move m = moves.moves[i];
-        // delta pruning: if stand + capture value + margin < alpha, skip
         Piece victim = pos.board()[m.to()];
-        if (!pos.in_check(pos.side_to_move()) && victim!=Piece::None) {
-            int delta = piece_value(victim);
-            if (stand + delta + 200 < alpha && !see_ge(pos,m,0)) continue;
+        if ((m.flags() & FLAG_EN_PASSANT) != 0) {
+            victim = pos.side_to_move() == Color::White ? Piece::BP : Piece::WP;
         }
-        if (!see_ge(pos,m,-50)) continue;
+
+        // Delta and SEE pruning are unsafe for check evasions: a quiet block,
+        // king move, or sacrifice may be the only move that avoids mate.
+        if (!in_check && victim != Piece::None) {
+            int delta = piece_value(victim);
+            if (stand + delta + 200 < alpha && !see_ge(pos, m, 0)) continue;
+        }
+        if (!in_check && !see_ge(pos, m, -50)) continue;
 
         if (!pos.make_move(m)) continue;
-        if (pos.in_check(opposite(pos.side_to_move()))) { pos.unmake_move(); continue; }
+        if (pos.in_check(opposite(pos.side_to_move()))) {
+            pos.unmake_move();
+            continue;
+        }
         Score score = -qsearch(pos, -beta, -alpha, ply + 1);
         pos.unmake_move();
         if (score >= beta) return beta;
