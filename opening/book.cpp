@@ -1,4 +1,5 @@
 #include "book.h"
+#include "../core/movegen.h"
 #include <fstream>
 #include <sstream>
 #include <random>
@@ -8,21 +9,41 @@
 
 namespace chess {
 namespace {
-Move parse_move_text(const std::string& s) {
-    if (s.size() < 4) return Move{};
+Move parse_move_text(const std::string& s, Position& pos) {
+    if (s.size() < 4 ||
+        s[0] < 'a' || s[0] > 'h' || s[1] < '1' || s[1] > '8' ||
+        s[2] < 'a' || s[2] > 'h' || s[3] < '1' || s[3] > '8') {
+        return Move{};
+    }
     int from = square_of(s[0] - 'a', s[1] - '1');
     int to = square_of(s[2] - 'a', s[3] - '1');
+
     std::uint32_t promo = 0;
     if (s.size() >= 5) {
-        switch (s[4]) {
+        switch (static_cast<char>(std::tolower(static_cast<unsigned char>(s[4])))) {
             case 'n': promo = 1; break;
             case 'b': promo = 2; break;
             case 'r': promo = 3; break;
             case 'q': promo = 4; break;
-            default: break;
+            default: return Move{};
         }
     }
-    return Move::make(from, to, promo ? FLAG_PROMOTION : 0, promo);
+
+    // Match the coordinate move against generated legal moves so that special
+    // flags (castling, en passant, double pushes, captures, promotion) survive
+    // book loading. Rebuilding Move::raw from from/to alone corrupts castling
+    // and en-passant when the experience book is played.
+    MoveList legal;
+    generate_moves(pos, legal, false);
+    for (int i = 0; i < legal.size; ++i) {
+        const Move m = legal.moves[i];
+        if (m.from() != from || m.to() != to) continue;
+        const bool promotion = (m.flags() & FLAG_PROMOTION) != 0;
+        if (promotion && m.promo() != promo) continue;
+        if (!promotion && promo != 0) continue;
+        return m;
+    }
+    return Move{};
 }
 
 // Polyglot helpers
@@ -114,7 +135,9 @@ bool OpeningBook::load_text(const std::string& path) {
             fen += toks[i];
         }
         Position pos; pos.set_fen(fen);
-        entries_[pos.zobrist()].push_back({parse_move_text(move_s), static_cast<std::uint16_t>(std::max(1, weight)), 0});
+        Move parsed = parse_move_text(move_s, pos);
+        if (parsed.is_null()) continue; // reject invalid/stale best-move labels
+        entries_[pos.zobrist()].push_back({parsed, static_cast<std::uint16_t>(std::max(1, weight)), 0});
     }
     return true;
 }
