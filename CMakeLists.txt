@@ -37,6 +37,15 @@ if(BUILD_TESTS)
   enable_testing()
   add_executable(engine_tests tests/test_main.cpp)
   target_link_libraries(engine_tests PRIVATE chesscore)
+
+  # Release builds define NDEBUG by default, which would compile every assert
+  # in the regression suite away. Keep assertions enabled for tests only.
+  if(MSVC)
+    target_compile_options(engine_tests PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(engine_tests PRIVATE -UNDEBUG)
+  endif()
+
   add_test(NAME engine_tests COMMAND engine_tests)
 
   # Register the extended published perft positions in CI as well.
