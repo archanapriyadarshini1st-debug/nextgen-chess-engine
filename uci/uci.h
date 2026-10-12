@@ -2,7 +2,6 @@
 #include "../core/position.h"
 #include "../search/search.h"
 #include "../opening/book.h"
-#include "../nnue/nnue.h"
 #include <string>
 
 namespace chess {
@@ -18,7 +17,6 @@ private:
     Position pos_;
     Search search_;
     OpeningBook book_;
-    NNUE nnue_;
     bool use_book_{false};
     bool chess960_{false};
     int multiPV_{1};
