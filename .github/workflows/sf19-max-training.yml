@@ -5,6 +5,16 @@ on:
   push:
     branches:
       - feature/validated-self-improvement
+    paths:
+      - '.github/workflows/sf19-max-training.yml'
+      - 'core/**'
+      - 'search/**'
+      - 'evaluation/**'
+      - 'nnue/**'
+      - 'training/**'
+      - 'tools/**'
+      - 'tests/**'
+      - 'CMakeLists.txt'
   workflow_dispatch:
     inputs:
       games:
@@ -23,8 +33,6 @@ permissions:
 
 jobs:
   train:
-    # The workflow's own "train: persist" commit must not recursively retrain forever.
-    if: ${{ github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'train: persist') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
