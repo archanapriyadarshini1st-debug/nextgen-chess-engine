@@ -119,7 +119,7 @@ jobs:
           git add datasets/games_vs_sf19.pgn datasets/games_vs_sf19.jsonl \
             datasets/missed_best_moves.jsonl datasets/experience_book.txt \
             datasets/weaknesses.json datasets/train_status.json \
-            networks/nnue_training_report.json datasets/candidate_validation.json
+            networks/nnue_training_report.json networks/candidate_validation.json
           git add -f networks/nnue.nnue
           if git diff --cached --quiet; then
             echo "No teacher data or model changes to commit."
