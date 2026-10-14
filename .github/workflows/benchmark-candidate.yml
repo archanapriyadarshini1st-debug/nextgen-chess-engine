@@ -79,7 +79,9 @@ jobs:
 
           def start(path, *, network=None, elo=None):
               engine = chess.engine.SimpleEngine.popen_uci(str(path))
-              opts = {"Threads": 1, "Hash": 32, "OwnBook": False}
+              opts = {"Threads": 1, "Hash": 32}
+              if Path(path).resolve() == OUR.resolve():
+                  opts["OwnBook"] = False
               if network is not None:
                   opts["NNUEFile"] = str(network.resolve())
               if elo is not None:
