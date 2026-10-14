@@ -1,6 +1,10 @@
 name: Stockfish 19 MAX training batch
 
 on:
+  # Run one measured training cycle when code is pushed to this experiment branch.
+  push:
+    branches:
+      - feature/validated-self-improvement
   workflow_dispatch:
     inputs:
       games:
@@ -19,6 +23,8 @@ permissions:
 
 jobs:
   train:
+    # The workflow's own "train: persist" commit must not recursively retrain forever.
+    if: ${{ github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'train: persist') }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -66,7 +72,7 @@ jobs:
 
       - name: Play games and label missed moves with Stockfish 19
         env:
-          GAMES: ${{ inputs.games }}
+          GAMES: ${{ inputs.games || '100' }}
         run: |
           python tools/sf19_max_train.py train \
             --games "$GAMES" \
@@ -112,7 +118,7 @@ jobs:
           test -s networks/nnue.nnue
 
       - name: Persist teacher data and validated NNUE model
-        if: success() && github.ref == 'refs/heads/main'
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/validated-self-improvement')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -125,7 +131,7 @@ jobs:
             echo "No teacher data or model changes to commit."
           else
             git commit -m "train: persist Stockfish 19 teacher labels and NNUE"
-            git push origin HEAD:main
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - name: Upload PGN, labels, learned experience book, and reports
