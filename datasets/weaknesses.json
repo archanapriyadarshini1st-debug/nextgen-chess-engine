@@ -1,21 +1,21 @@
 {
-  "updated": "2026-10-12T15:03:51Z",
-  "games": 700,
+  "updated": "2026-10-14T14:30:22Z",
+  "games": 800,
   "results": {
-    "loss": 694,
+    "loss": 794,
     "draw": 6
   },
-  "missed_moves": 9223,
+  "missed_moves": 9996,
   "by_phase": {
     "opening": {
-      "moves": 3465,
-      "avg_cp_loss": 205.55007215007214,
-      "blunders": 592
+      "moves": 3754,
+      "avg_cp_loss": 217.3407032498668,
+      "blunders": 674
     },
     "middlegame": {
-      "moves": 5706,
-      "avg_cp_loss": 1074.5389064143008,
-      "blunders": 1039
+      "moves": 6190,
+      "avg_cp_loss": 1144.262197092084,
+      "blunders": 1202
     },
     "endgame": {
       "moves": 52,
@@ -24,66 +24,66 @@
     }
   },
   "blunders_by_piece": {
-    "N": 1915,
-    "P": 2524,
-    "Q": 897,
-    "K": 1278,
-    "B": 1337,
-    "R": 1272
+    "N": 2048,
+    "P": 2743,
+    "Q": 994,
+    "K": 1415,
+    "B": 1457,
+    "R": 1339
   },
   "top_reasons": [
     [
       "positional improvement",
-      5884
+      6395
     ],
     [
       "develops a piece",
-      996
+      1065
     ],
     [
       "occupies centre",
-      872
+      921
     ],
     [
       "you pushed a wing pawn instead",
-      511
+      548
     ],
     [
       "castles (king safety)",
-      165
+      187
     ],
     [
       "occupies centre; you pushed a wing pawn instead",
-      84
+      88
     ],
     [
       "gives check; forcing; you missed a check",
-      67
+      79
     ],
     [
       "develops a piece; you pushed a wing pawn instead",
-      59
+      64
     ],
     [
       "occupies centre; develops a piece",
-      54
-    ],
-    [
-      "wins P; you missed a capture",
-      37
-    ],
-    [
-      "wins P; occupies centre; you missed a capture",
-      31
+      60
     ],
     [
       "wins p; you missed a capture",
-      29
+      42
+    ],
+    [
+      "wins P; you missed a capture",
+      40
+    ],
+    [
+      "wins P; occupies centre; you missed a capture",
+      37
     ]
   ],
   "severity": {
-    "inaccuracy": 5598,
-    "blunder": 1646,
-    "mistake": 1979
+    "inaccuracy": 5846,
+    "blunder": 1891,
+    "mistake": 2259
   }
 }

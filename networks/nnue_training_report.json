@@ -1,12 +1,12 @@
 {
   "dataset": "datasets/missed_best_moves.jsonl",
-  "unique_positions": 8373,
-  "train_positions": 7559,
-  "validation_positions": 814,
+  "unique_positions": 9106,
+  "train_positions": 8222,
+  "validation_positions": 884,
   "max_cp_clamp": 1200,
-  "best_epoch": 11,
-  "validation_mae_cp": 85.06,
-  "network_path": "/tmp/nextgen_nnue.nnue",
+  "best_epoch": 20,
+  "validation_mae_cp": 78.08,
+  "network_path": "/tmp/nextgen_candidate.nnue",
   "feature_count": 5120,
   "hidden_1": 256,
   "hidden_2": 32
