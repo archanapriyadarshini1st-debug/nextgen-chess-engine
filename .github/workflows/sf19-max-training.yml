@@ -1,20 +1,6 @@
 name: Stockfish 19 MAX training batch
 
 on:
-  # Run one measured training cycle when code is pushed to this experiment branch.
-  push:
-    branches:
-      - feature/validated-self-improvement
-    paths:
-      - '.github/workflows/sf19-max-training.yml'
-      - 'core/**'
-      - 'search/**'
-      - 'evaluation/**'
-      - 'nnue/**'
-      - 'training/**'
-      - 'tools/**'
-      - 'tests/**'
-      - 'CMakeLists.txt'
   workflow_dispatch:
     inputs:
       games:
