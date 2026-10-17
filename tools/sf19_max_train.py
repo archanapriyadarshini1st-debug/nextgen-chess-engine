@@ -433,6 +433,8 @@ def cmd_elo(args) -> dict:
         discarded = 0
         try:
             our = start_engine(OUR, hash_mb=32, threads=1)
+            # Ratings must measure search/evaluation, not the learned experience book.
+            our.configure({"OwnBook": False})
             sf = start_engine(SF, hash_mb=16, threads=1, limit_elo=elo)
             our_limit = chess.engine.Limit(time=our_ms / 1000.0)
             sf_limit = chess.engine.Limit(time=sf_ms / 1000.0)
