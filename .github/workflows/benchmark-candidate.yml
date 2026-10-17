@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - feature/validated-self-improvement
+    # Run automatically only when a fresh champion network has been persisted.
+    # Report commits do not match this filter, so the workflow cannot loop.
     paths:
-      - '.github/workflows/benchmark-candidate.yml'
+      - 'networks/nnue.nnue'
   workflow_dispatch:
 
 permissions:
