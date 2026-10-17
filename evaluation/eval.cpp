@@ -2,7 +2,6 @@
 #include "../nnue/nnue.h"
 #include <algorithm>
 #include <cmath>
-#include <mutex>
 #include <iostream>
 
 namespace chess {
@@ -253,21 +252,21 @@ int evaluate_mobility(const Position& pos, Color c) {
 }
 
 int evaluate_space(const Position& pos, Color c) {
-    // Space: count safe squares in center and enemy territory controlled
-    int space=0;
-    int startRank = (c==Color::White? 2:3);
-    int endRank = (c==Color::White? 5:6);
-    for (int r=startRank;r<=endRank;++r) {
-        for (int f=2;f<=5;++f) {
-            int sq=square_of(f,r);
-            if (pos.board()[sq]==Piece::None) {
-                // if attacked by own pawn or minor and not attacked by enemy pawn
-                // simplified: +1 if empty
-                space+=1;
-            }
+    // Reward genuinely controlled central squares, not merely empty squares.
+    // Count only squares attacked by this side; squares also attacked by the
+    // opponent receive a smaller bonus because they are contested.
+    const Color them = (c == Color::White ? Color::Black : Color::White);
+    int score = 0;
+    for (int r = 2; r <= 5; ++r) {
+        for (int f = 2; f <= 5; ++f) {
+            const int sq = square_of(f, r);
+            const bool ours = pos.square_attacked(sq, c);
+            if (!ours) continue;
+            const bool theirs = pos.square_attacked(sq, them);
+            score += theirs ? 1 : 3;
         }
     }
-    return space*2;
+    return score;
 }
 
 int evaluate_knight_discipline(const Position& pos, Color c) {
@@ -311,20 +310,10 @@ int evaluate_threats(const Position& pos, Color c) {
     return score;
 }
 
-// Global NNUE with thread-safe lazy load
+// NNUE is opt-in: a network is loaded only through the UCI NNUEFile option.
+// This keeps classical-vs-NNUE tournaments honest and avoids silently loading
+// an incompatible or stale network merely because a file exists on disk.
 static NNUE g_nnue;
-static std::once_flag g_nnue_flag;
-
-void try_load_nnue() {
-    std::call_once(g_nnue_flag, [](){
-        // Respect a network explicitly loaded with the UCI NNUEFile option.
-        if (g_nnue.is_loaded()) return;
-        const char* paths[] = {"networks/nnue.nnue","/home/user/nextgen-chess-engine/networks/nnue.nnue","nnue.nnue","/tmp/nnue.nnue"};
-        for (auto p : paths) {
-            if (g_nnue.load(p)) break;
-        }
-    });
-}
 
 } // namespace
 
@@ -392,7 +381,6 @@ Score evaluate_handcrafted(const Position& pos) {
 }
 
 Score evaluate(const Position& pos) {
-    try_load_nnue();
     if (!g_nnue.is_loaded()) return evaluate_handcrafted(pos);
 
     // The teacher network is trained to approximate Stockfish search scores.
