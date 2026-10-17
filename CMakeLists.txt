@@ -37,10 +37,19 @@ if(BUILD_TESTS)
   enable_testing()
   add_executable(engine_tests tests/test_main.cpp)
   target_link_libraries(engine_tests PRIVATE chesscore)
+  # The regression suite uses assert(); keep assertions enabled even in Release.
+  target_compile_options(engine_tests PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>
+  )
   add_test(NAME engine_tests COMMAND engine_tests)
 
   # Register the extended published perft positions in CI as well.
   add_executable(perft_suite_extended tests/perft_suite_extended.cpp)
   target_link_libraries(perft_suite_extended PRIVATE chesscore)
+  target_compile_options(perft_suite_extended PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>
+  )
   add_test(NAME perft_suite_extended COMMAND perft_suite_extended)
 endif()
