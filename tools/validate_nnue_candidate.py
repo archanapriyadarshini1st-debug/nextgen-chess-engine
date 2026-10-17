@@ -85,9 +85,14 @@ def main() -> int:
     try:
         candidate_engine = chess.engine.SimpleEngine.popen_uci(str(args.engine))
         champion_engine = chess.engine.SimpleEngine.popen_uci(str(args.engine))
-        candidate_engine.configure({"Threads": 1, "Hash": 64, "NNUEFile": str(args.candidate.resolve())})
-        # Champion is the current default evaluation path, with no candidate network loaded.
-        champion_engine.configure({"Threads": 1, "Hash": 64})
+        # Disable the experience book in both engines: otherwise both can replay
+        # Stockfish-labelled moves, making the NNUE comparison meaningless.
+        candidate_engine.configure({
+            "Threads": 1, "Hash": 64, "OwnBook": False,
+            "NNUEFile": str(args.candidate.resolve()),
+        })
+        # No NNUEFile means the opt-in classical evaluator is the champion.
+        champion_engine.configure({"Threads": 1, "Hash": 64, "OwnBook": False})
         for index in range(args.games):
             opening_moves = openings[index % len(openings)]
             candidate_white = (index % 2 == 0)
