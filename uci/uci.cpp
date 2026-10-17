@@ -269,7 +269,9 @@ int UCI::loop() {
                 };
                 for (auto pth: paths) {
                     if (book_.load_text(pth)) {
-                        use_book_ = true;
+                        // Load experience data, but keep book usage opt-in.
+                        // The advertised UCI default is OwnBook=false; enabling
+                        // it here silently contaminates strength benchmarks.
                         std::cout << "info string experience book loaded from " << pth << "\n";
                         break;
                     }

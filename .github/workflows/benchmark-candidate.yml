@@ -1,0 +1,216 @@
+name: Candidate NNUE vs Stockfish 19 benchmark
+
+on:
+  push:
+    branches:
+      - feature/validated-self-improvement
+    # Run automatically only when a fresh champion network has been persisted.
+    # Report commits do not match this filter, so the workflow cannot loop.
+    paths:
+      - 'networks/nnue.nnue'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout experiment branch
+        uses: actions/checkout@v4
+
+      - name: Install build and chess tools
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake
+          python -m pip install --upgrade pip
+          python -m pip install python-chess
+
+      - name: Build and run engine correctness tests
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          mkdir -p bin
+          cp build/chess_engine bin/chess_engine
+          test -s networks/nnue.nnue
+
+      - name: Download official Stockfish 19
+        run: |
+          mkdir -p /tmp/sf19
+          curl --fail --location --retry 3 \
+            https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz \
+            --output /tmp/stockfish19.tar.gz
+          tar -xzf /tmp/stockfish19.tar.gz -C /tmp/sf19 --strip-components=1
+          STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
+          test -n "$STOCKFISH_BIN"
+          ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
+          chmod +x /tmp/sf19/stockfish19
+          /tmp/sf19/stockfish19 <<'EOF'
+          uci
+          quit
+          EOF
+
+      - name: Play matched baseline and NNUE games vs calibrated Stockfish 19
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import json, math, os
+          from pathlib import Path
+          import chess
+          import chess.engine
+
+          ROOT = Path.cwd()
+          OUR = ROOT / "bin" / "chess_engine"
+          SF = Path("/tmp/sf19/stockfish19")
+          NET = ROOT / "networks" / "nnue.nnue"
+          REPORT = ROOT / "benchmarks" / "candidate_vs_sf19_report.json"
+          MOVE_TIME = 0.12
+          MAX_PLIES = 160
+          GAMES_PER_GROUP = 12
+          LEVELS = [1320, 1400]
+          OPENINGS = [
+              [], ["e2e4", "e7e5"], ["d2d4", "d7d5"],
+              ["c2c4", "e7e5"], ["g1f3", "d7d5"], ["e2e4", "c7c5"],
+          ]
+
+          def start(path, *, network=None, elo=None):
+              engine = chess.engine.SimpleEngine.popen_uci(str(path))
+              opts = {"Threads": 1, "Hash": 32}
+              if Path(path).resolve() == OUR.resolve():
+                  opts["OwnBook"] = False
+              if network is not None:
+                  opts["NNUEFile"] = str(network.resolve())
+              if elo is not None:
+                  opts["UCI_LimitStrength"] = True
+                  opts["UCI_Elo"] = int(elo)
+              engine.configure(opts)
+              return engine
+
+          def play_game(our, sf, *, our_white, opening):
+              board = chess.Board()
+              for move in opening:
+                  board.push_uci(move)
+              while not board.is_game_over(claim_draw=True) and board.ply() < MAX_PLIES:
+                  ours_to_move = (board.turn == chess.WHITE) == our_white
+                  engine = our if ours_to_move else sf
+                  result = engine.play(board, chess.engine.Limit(time=MOVE_TIME))
+                  if result.move is None or result.move not in board.legal_moves:
+                      raise RuntimeError(f"Illegal/missing move at FEN: {board.fen()}")
+                  board.push(result.move)
+              outcome = board.outcome(claim_draw=True)
+              if outcome is None or outcome.winner is None:
+                  return "draw", board.ply()
+              return ("win" if outcome.winner == our_white else "loss"), board.ply()
+
+          def summarize(elo, variant, rows):
+              wins = sum(row["result"] == "win" for row in rows)
+              draws = sum(row["result"] == "draw" for row in rows)
+              losses = sum(row["result"] == "loss" for row in rows)
+              points = wins + 0.5 * draws
+              score = points / len(rows) if rows else 0.0
+              smoothed = (points + 0.5) / (len(rows) + 1.0)
+              smoothed = min(max(smoothed, 1e-6), 1 - 1e-6)
+              estimated = elo - 400 * math.log10(1 / smoothed - 1)
+              return {
+                  "opponent_uci_elo": elo, "variant": variant,
+                  "games": len(rows), "wins": wins, "draws": draws, "losses": losses,
+                  "score_fraction": round(score, 4),
+                  "exploratory_elo_estimate": round(estimated, 1),
+                  "plies_mean": round(sum(row["plies"] for row in rows) / len(rows), 1),
+                  "results": rows,
+              }
+
+          if not OUR.is_file() or not NET.is_file() or NET.stat().st_size == 0:
+              raise SystemExit("Required engine binary or promoted NNUE network is missing.")
+
+          all_results = []
+          summaries = []
+          for level in LEVELS:
+              for variant in ("classical", "nnue"):
+                  print(f"\n=== {variant.upper()} vs Stockfish 19 UCI_Elo={level} ===", flush=True)
+                  our = sf = None
+                  rows = []
+                  try:
+                      our = start(OUR, network=(NET if variant == "nnue" else None))
+                      sf = start(SF, elo=level)
+                      for i in range(GAMES_PER_GROUP):
+                          opening = OPENINGS[(i // 2) % len(OPENINGS)]
+                          our_white = (i % 2 == 0)
+                          result, plies = play_game(our, sf, our_white=our_white, opening=opening)
+                          row = {
+                              "game": i + 1, "opening_uci": opening,
+                              "our_color": "white" if our_white else "black",
+                              "result_for_our_engine": result, "plies": plies,
+                          }
+                          rows.append(row)
+                          print(f"{variant} SF{level} {i+1}/{GAMES_PER_GROUP}: {result}, "
+                                f"{'W' if our_white else 'B'}, {plies} plies", flush=True)
+                  finally:
+                      for engine in (our, sf):
+                          if engine is not None:
+                              try: engine.quit()
+                              except Exception: pass
+                  summary = summarize(level, variant, rows)
+                  summaries.append({k:v for k,v in summary.items() if k != "results"})
+                  all_results.append(summary)
+
+          comparisons = []
+          by_key = {(row["opponent_uci_elo"], row["variant"]): row for row in summaries}
+          for level in LEVELS:
+              baseline = by_key[(level, "classical")]
+              candidate = by_key[(level, "nnue")]
+              comparisons.append({
+                  "opponent_uci_elo": level,
+                  "classical_score_fraction": baseline["score_fraction"],
+                  "nnue_score_fraction": candidate["score_fraction"],
+                  "score_delta_percentage_points": round(
+                      (candidate["score_fraction"] - baseline["score_fraction"]) * 100, 1
+                  ),
+              })
+
+          report = {
+              "generated_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+              "engine": "NextGen Chess Engine",
+              "teacher_opponent": "official Stockfish 19 with UCI_LimitStrength",
+              "time_control": f"{int(MOVE_TIME*1000)} ms per move each side",
+              "max_plies": MAX_PLIES,
+              "games_per_variant_per_level": GAMES_PER_GROUP,
+              "candidate_network": "networks/nnue.nnue",
+              "baseline": "same engine binary with NNUEFile unset (classical evaluation)",
+              "comparisons": comparisons,
+              "groups": all_results,
+              "caveat": "Directional low-sample benchmark only. Do not claim a precise Elo gain; run a larger paired SPRT tournament before drawing strong conclusions.",
+          }
+          REPORT.parent.mkdir(parents=True, exist_ok=True)
+          REPORT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+          print("\n=== SUMMARY ===")
+          print(json.dumps({"comparisons": comparisons, "groups": summaries}, indent=2))
+          PY
+
+      - name: Persist benchmark report to experiment branch
+        if: always()
+        run: |
+          if [ -s benchmarks/candidate_vs_sf19_report.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add benchmarks/candidate_vs_sf19_report.json
+            if ! git diff --cached --quiet; then
+              git commit -m "benchmark: record NNUE candidate vs Stockfish 19"
+              git push origin "HEAD:${GITHUB_REF_NAME}"
+            fi
+          fi
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-candidate-stockfish19-benchmark
+          if-no-files-found: warn
+          retention-days: 30
+          path: benchmarks/candidate_vs_sf19_report.json

@@ -66,7 +66,7 @@ jobs:
 
       - name: Play games and label missed moves with Stockfish 19
         env:
-          GAMES: ${{ inputs.games }}
+          GAMES: ${{ inputs.games || '100' }}
         run: |
           python tools/sf19_max_train.py train \
             --games "$GAMES" \
@@ -75,43 +75,57 @@ jobs:
             --analyse-depth 8 \
             --min-cp-loss 50
 
-      - name: Train compatible NNUE from Stockfish teacher labels
+      - name: Train candidate NNUE from Stockfish teacher labels
         run: |
           python training/train_nnue_teacher.py \
             --dataset datasets/missed_best_moves.jsonl \
-            --out /tmp/nextgen_nnue.pt \
-            --report networks/nnue_training_report.json \
+            --out /tmp/nextgen_candidate.pt \
+            --report /tmp/nextgen_candidate_training_report.json \
             --epochs 20 \
             --patience 4 \
             --batch 128 \
             --threads 2 \
             --cpu
-          cp /tmp/nextgen_nnue.nnue networks/nnue.nnue
-          test -s networks/nnue.nnue
+          test -s /tmp/nextgen_candidate.nnue
+          cp /tmp/nextgen_candidate_training_report.json networks/nnue_training_report.json
 
-      - name: Smoke-test engine with the trained network
+      - name: Smoke-test candidate network
         run: |
           set -o pipefail
-          printf 'uci\nsetoption name NNUEFile value networks/nnue.nnue\nisready\nposition startpos\ngo depth 6\nquit\n' \
+          printf 'uci\nsetoption name NNUEFile value /tmp/nextgen_candidate.nnue\nisready\nposition startpos\ngo depth 6\nquit\n' \
             | ./bin/chess_engine | tee /tmp/nextgen-nnue-smoke.txt
-          grep -F 'NNUEFile loaded networks/nnue.nnue' /tmp/nextgen-nnue-smoke.txt
+          grep -F 'NNUEFile loaded /tmp/nextgen_candidate.nnue' /tmp/nextgen-nnue-smoke.txt
           grep -E '^bestmove [a-h][1-8][a-h][1-8]' /tmp/nextgen-nnue-smoke.txt
 
+      - name: Validate candidate against current champion
+        run: |
+          python tools/validate_nnue_candidate.py \
+            --candidate /tmp/nextgen_candidate.nnue \
+            --games 40 \
+            --move-time 0.15 \
+            --min-score 0.55 \
+            --report networks/candidate_validation.json
+
+      - name: Promote only a passing candidate
+        run: |
+          cp /tmp/nextgen_candidate.nnue networks/nnue.nnue
+          test -s networks/nnue.nnue
+
       - name: Persist teacher data and validated NNUE model
-        if: success() && github.ref == 'refs/heads/main'
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/validated-self-improvement')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add datasets/games_vs_sf19.pgn datasets/games_vs_sf19.jsonl \
             datasets/missed_best_moves.jsonl datasets/experience_book.txt \
             datasets/weaknesses.json datasets/train_status.json \
-            networks/nnue_training_report.json
+            networks/nnue_training_report.json networks/candidate_validation.json
           git add -f networks/nnue.nnue
           if git diff --cached --quiet; then
             echo "No teacher data or model changes to commit."
           else
             git commit -m "train: persist Stockfish 19 teacher labels and NNUE"
-            git push origin HEAD:main
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - name: Upload PGN, labels, learned experience book, and reports
@@ -130,3 +144,4 @@ jobs:
             datasets/train_status.json
             networks/nnue.nnue
             networks/nnue_training_report.json
+            networks/candidate_validation.json

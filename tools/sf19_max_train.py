@@ -164,13 +164,26 @@ def wilson_interval(wins: float, n: int, z: float = 1.96) -> tuple[float, float]
     return (max(0.0, centre - half), min(1.0, centre + half))
 
 
-def start_engine(path: Path, hash_mb: int = 16, threads: int = 1, limit_elo: int | None = None):
+def start_engine(
+    path: Path,
+    hash_mb: int = 16,
+    threads: int = 1,
+    limit_elo: int | None = None,
+    own_book: bool | None = None,
+):
     eng = chess.engine.SimpleEngine.popen_uci(str(path))
     opts = {"Hash": hash_mb, "Threads": threads}
     try:
         eng.configure(opts)
     except Exception:
         pass
+    if own_book is not None:
+        # Do this separately so Stockfish versions without an OwnBook option
+        # still receive Hash/Threads and can be used as a teacher normally.
+        try:
+            eng.configure({"OwnBook": own_book})
+        except Exception:
+            pass
     if limit_elo is not None:
         try:
             eng.configure({"UCI_LimitStrength": True, "UCI_Elo": int(limit_elo)})
@@ -433,6 +446,8 @@ def cmd_elo(args) -> dict:
         discarded = 0
         try:
             our = start_engine(OUR, hash_mb=32, threads=1)
+            # Ratings must measure search/evaluation, not the learned experience book.
+            our.configure({"OwnBook": False})
             sf = start_engine(SF, hash_mb=16, threads=1, limit_elo=elo)
             our_limit = chess.engine.Limit(time=our_ms / 1000.0)
             sf_limit = chess.engine.Limit(time=sf_ms / 1000.0)
@@ -547,7 +562,9 @@ def cmd_train(args) -> None:
         safe_quit(our)
         safe_quit(sf)
         time.sleep(0.2)
-        our = start_engine(OUR, hash_mb=32, threads=1)
+        # Training intentionally uses the existing experience book; Elo
+        # measurements and candidate validation explicitly turn it off.
+        our = start_engine(OUR, hash_mb=32, threads=1, own_book=True)
         sf = start_engine(SF, hash_mb=16, threads=1, limit_elo=None)
         return our, sf
 

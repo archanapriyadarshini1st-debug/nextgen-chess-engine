@@ -91,9 +91,11 @@ void NNUE::refresh_accumulator(const Position& pos, Accumulator& acc, Color pers
         Piece p = board[sq];
         if (p==Piece::None) continue;
         int f = make_feature(perspective, kingSq, p, sq);
-        // f -> add weights
-        int offset = f * NNUE_HT1;
-        for (int i=0;i<NNUE_HT1;++i) {
+        // Kings are deliberately excluded from the trained feature map.
+        // Never index feature_weights_ with the sentinel returned for them.
+        if (f < 0) continue;
+        const int offset = f * NNUE_HT1;
+        for (int i = 0; i < NNUE_HT1; ++i) {
             target[i] += feature_weights_[offset + i];
         }
     }
