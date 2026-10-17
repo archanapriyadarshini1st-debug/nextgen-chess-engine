@@ -2,6 +2,7 @@
 #include "../search/search.h"
 #include "../opening/book.h"
 #include "../tb/syzygy.h"
+#include "../evaluation/eval.h"
 #include "../nnue/nnue.h"
 #include <cassert>
 #include <cstdint>
@@ -22,6 +23,15 @@ void test_startpos() {
     assert(perft(pos, 2) == 400);
     assert(perft(pos, 3) == 8902);
     assert(perft(pos, 4) == 197281);
+}
+
+void test_handcrafted_eval_side_to_move_symmetry() {
+    // Swapping only the side-to-move on the symmetric start position must not
+    // invent a positional advantage for White or Black.
+    Position white_to_move, black_to_move;
+    white_to_move.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    black_to_move.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+    assert(evaluate_handcrafted(white_to_move) == evaluate_handcrafted(black_to_move));
 }
 
 void test_fen_roundtrip() {
@@ -218,6 +228,7 @@ void test_kiwipete_perft() {
 
 int main() {
     test_startpos();
+    test_handcrafted_eval_side_to_move_symmetry();
     test_fen_roundtrip();
     test_make_unmake_identity();
     test_draw_detection();
