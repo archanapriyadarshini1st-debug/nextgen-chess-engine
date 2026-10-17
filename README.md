@@ -6,7 +6,8 @@ Modular C++20 UCI engine. **Measured Elo ≈ 1200** against Stockfish 19 skill l
 
 - Perft is correct (startpos 20/400/8902/197281, Kiwipete 48/2039/97862).
 - Search no longer emits `bestmove 0000` when mated (that used to forfeit games).
-- **NNUE is off.** The 21MB HalfKP file does not match the C++ feature map (and was trained on self-play until loss 0.0). Eval is classical PST + structure.
+- **NNUE is opt-in only**: by default the engine uses classical evaluation. To compare a trained network, load it explicitly with UCI `setoption name NNUEFile value networks/nnue.nnue`. The evaluator must not silently auto-load a network just because a file happens to exist.
+- The compact teacher-trained NNUE is experimental. A previous 40-game candidate report is **not a valid strength claim**: the validator allowed the shared Stockfish-labelled experience book in both engines, and the NNUE accumulator had a king-feature indexing bug. The experiment branch now fixes both issues; rerun the gate and the independent Stockfish benchmark before claiming strength gains.
 - We do **not** call Stockfish from `evaluate()`. That was cheating and was removed.
 - After every loss vs **Stockfish 19 full strength**, the engine saves the move SF19 would have played into `datasets/experience_book.txt` and loads it on `isready`.
 
@@ -81,3 +82,11 @@ Clock matches (not for training labels): `python3 tools/clock_match.py --games 4
 g++ -std=c++20 -O2 -pthread -I. core/*.cpp search/*.cpp evaluation/eval.cpp nnue/nnue.cpp uci/uci.cpp logging/*.cpp tb/syzygy.cpp opening/*.cpp tests/test_main.cpp -o bin/engine_tests
 ./bin/engine_tests
 ```
+
+## Evaluation integrity fixes (2026-10-17)
+
+- NNUE loading is explicit, so a classical baseline cannot accidentally load a network from the working directory.
+- NNUE accumulator refresh skips excluded king features instead of indexing before the feature array.
+- Evaluation now scores actually controlled central squares, and a start-position side-to-move symmetry regression test guards against color bias.
+- Elo/candidate measurements disable the shared experience book; otherwise both engines could replay teacher-suggested moves and hide the effect of their evaluators.
+- Release-mode CTest keeps C++ assertions enabled. The short candidate gate is a screening test only; use the independent Stockfish tournament and a larger SPRT match for real strength claims.
