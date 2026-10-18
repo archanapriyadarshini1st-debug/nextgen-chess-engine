@@ -85,48 +85,74 @@ def fen_to_features(fen: str) -> tuple[list[int], list[int]]:
     return white_features, black_features
 
 
-def load_positions(path: Path, max_cp: int) -> list[dict[str, Any]]:
+def load_positions(paths: list[Path], max_cp: int) -> list[dict[str, Any]]:
     import chess
-    # Average repeated board positions instead of treating every duplicate FEN
-    # (possibly with a different move counter) as an independent sample.
+    # Broad teacher positions define the evaluation distribution. Mistake-only
+    # examples remain useful, but receive low sample weight so selected blunders
+    # cannot dominate thousands of ordinary positions. Deeper Stockfish labels
+    # receive more influence when multiple analyses cover the same position.
     aggregates: dict[str, dict[str, Any]] = {}
     malformed = 0
-    for line in path.read_text(encoding="utf-8").splitlines():
-        try:
-            record = json.loads(line)
-            fen = str(record["fen"])
-            score = record.get("best_cp")
-            if not isinstance(score, (int, float)):
-                continue
-            board = chess.Board(fen)
-            if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
-                continue
-            # The engine applies a sign flip for Black-to-move at inference,
-            # so the network itself must learn a White-perspective score.
-            score_white_pov = int(score) if board.turn == chess.WHITE else -int(score)
-            white, black = fen_to_features(fen)
-            # King-versus-king positions have no active NNUE features; they
-            # are drawn by rule and do not teach a useful static evaluation.
-            if not white or not black:
-                continue
-            key = " ".join(fen.split()[:4])  # board, side, castling, en-passant
-            clipped = max(-max_cp, min(max_cp, score_white_pov))
-            slot = aggregates.setdefault(
-                key, {"key": key, "fen": fen, "sum_cp": 0, "count": 0,
-                      "white": white, "black": black}
-            )
-            slot["sum_cp"] += clipped
-            slot["count"] += 1
-        except Exception:
-            malformed += 1
+    file_counts: dict[str, int] = {}
+    for path in paths:
+        mistake_only = path.name == "missed_best_moves.jsonl"
+        source_weight = 0.15 if mistake_only else 1.0
+        file_count = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+                fen = str(record["fen"])
+                score = record.get("best_cp")
+                if not isinstance(score, (int, float)):
+                    continue
+                board = chess.Board(fen)
+                if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
+                    continue
+                # Source data is side-to-move POV; inference flips the
+                # White-perspective network output for Black-to-move positions.
+                score_white_pov = int(score) if board.turn == chess.WHITE else -int(score)
+                white, black = fen_to_features(fen)
+                if not white or not black:
+                    continue
+                key = " ".join(fen.split()[:4])
+                clipped = max(-max_cp, min(max_cp, score_white_pov))
+                try:
+                    depth = int(record.get("teacher_depth", 8))
+                except (TypeError, ValueError):
+                    depth = 8
+                depth_weight = min(5.0, max(1.0, (max(8, depth) / 8.0) ** 1.3))
+                label_weight = source_weight * depth_weight
+                slot = aggregates.setdefault(
+                    key, {
+                        "key": key, "fen": fen, "weighted_cp": 0.0,
+                        "weight_sum": 0.0, "sources": set(),
+                        "white": white, "black": black,
+                    }
+                )
+                slot["weighted_cp"] += clipped * label_weight
+                slot["weight_sum"] += label_weight
+                slot["sources"].add("mistake" if mistake_only else "teacher")
+                file_count += 1
+            except Exception:
+                malformed += 1
+        file_counts[str(path)] = file_count
 
     positions = []
     for row in aggregates.values():
-        row["target_cp"] = row.pop("sum_cp") / row.pop("count")
+        row["target_cp"] = row.pop("weighted_cp") / max(row.pop("weight_sum"), 1e-9)
+        sources = row.pop("sources")
+        row["sample_weight"] = 1.0 if "teacher" in sources else 0.15
         positions.append(row)
-    print(f"Loaded {len(positions)} unique positions from {path} (skipped malformed={malformed})")
+    broad_count = sum(1 for row in positions if row["sample_weight"] >= 1.0)
+    print(
+        f"Loaded {len(positions)} unique positions from {len(paths)} dataset(s); "
+        f"rows={file_counts}; skipped malformed={malformed}; "
+        f"broad={broad_count}; mistake-only={len(positions)-broad_count}"
+    )
     if len(positions) < 100:
         raise SystemExit("Refusing to train: fewer than 100 usable teacher positions.")
+    if broad_count == 0:
+        raise SystemExit("Refusing to train without broad, non-mistake-only teacher positions.")
     return positions
 
 
@@ -143,6 +169,7 @@ class FeatureDataset(Dataset):
             row["white"],
             row["black"],
             torch.tensor(float(row["target_cp"]) / SCORE_SCALE, dtype=torch.float32),
+            torch.tensor(float(row["sample_weight"]), dtype=torch.float32),
         )
 
 
@@ -152,18 +179,21 @@ def collate_sparse(batch):
     white_offsets: list[int] = []
     black_offsets: list[int] = []
     targets = []
-    for white, black, target in batch:
+    sample_weights = []
+    for white, black, target, sample_weight in batch:
         white_offsets.append(len(white_indices))
         black_offsets.append(len(black_indices))
         white_indices.extend(white)
         black_indices.extend(black)
         targets.append(target)
+        sample_weights.append(sample_weight)
     return (
         torch.tensor(white_indices, dtype=torch.long),
         torch.tensor(white_offsets, dtype=torch.long),
         torch.tensor(black_indices, dtype=torch.long),
         torch.tensor(black_offsets, dtype=torch.long),
         torch.stack(targets).reshape(-1, 1),
+        torch.stack(sample_weights).reshape(-1),
     )
 
 
@@ -230,7 +260,7 @@ def train(args) -> None:
         "cuda" if torch.cuda.is_available() else "cpu"
     )
 
-    positions = load_positions(Path(args.dataset), args.max_cp)
+    positions = load_positions(args.dataset, args.max_cp)
     # Stable FEN-based split ensures duplicate positions never leak into both
     # train and validation data.
     train_rows, val_rows = [], []
@@ -251,7 +281,7 @@ def train(args) -> None:
     )
     model = TeacherNNUE().to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    loss_fn = nn.SmoothL1Loss(beta=0.25)
+    loss_fn = nn.SmoothL1Loss(beta=0.25, reduction="none")
     best_val = float("inf")
     best_epoch = -1
     best_state = None
@@ -261,13 +291,16 @@ def train(args) -> None:
         model.train()
         train_loss = 0.0
         batches = 0
-        for wi, wo, bi, bo, target in train_loader:
-            wi, wo, bi, bo, target = (
-                wi.to(device), wo.to(device), bi.to(device), bo.to(device), target.to(device)
+        for wi, wo, bi, bo, target, sample_weight in train_loader:
+            wi, wo, bi, bo, target, sample_weight = (
+                wi.to(device), wo.to(device), bi.to(device), bo.to(device),
+                target.to(device), sample_weight.to(device)
             )
             optimizer.zero_grad(set_to_none=True)
             prediction = model(wi, wo, bi, bo)
-            loss = loss_fn(prediction, target)
+            per_position_loss = loss_fn(prediction, target).view(-1)
+            weights = sample_weight.view(-1)
+            loss = (per_position_loss * weights).sum() / weights.sum().clamp_min(1e-6)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -277,20 +310,22 @@ def train(args) -> None:
         model.eval()
         absolute_error = 0.0
         squared_error = 0.0
-        val_count = 0
+        val_weight = 0.0
         with torch.no_grad():
-            for wi, wo, bi, bo, target in val_loader:
-                wi, wo, bi, bo, target = (
-                    wi.to(device), wo.to(device), bi.to(device), bo.to(device), target.to(device)
+            for wi, wo, bi, bo, target, sample_weight in val_loader:
+                wi, wo, bi, bo, target, sample_weight = (
+                    wi.to(device), wo.to(device), bi.to(device), bo.to(device),
+                    target.to(device), sample_weight.to(device)
                 )
                 pred = model(wi, wo, bi, bo)
-                delta_cp = (pred - target) * SCORE_SCALE
-                absolute_error += float(delta_cp.abs().sum().item())
-                squared_error += float((delta_cp * delta_cp).sum().item())
-                val_count += target.numel()
+                delta_cp = ((pred - target) * SCORE_SCALE).view(-1)
+                weights = sample_weight.view(-1)
+                absolute_error += float((delta_cp.abs() * weights).sum().item())
+                squared_error += float((delta_cp.square() * weights).sum().item())
+                val_weight += float(weights.sum().item())
 
-        val_mae = absolute_error / max(1, val_count)
-        val_rmse = (squared_error / max(1, val_count)) ** 0.5
+        val_mae = absolute_error / max(1e-6, val_weight)
+        val_rmse = (squared_error / max(1e-6, val_weight)) ** 0.5
         print(
             f"epoch={epoch:02d} train_loss={train_loss / max(1, batches):.5f} "
             f"val_mae_cp={val_mae:.1f} val_rmse_cp={val_rmse:.1f}"
@@ -313,7 +348,8 @@ def train(args) -> None:
     export_binary(model, Path(args.out).with_suffix(".nnue"))
 
     report = {
-        "dataset": str(Path(args.dataset)),
+        "dataset": [str(path) for path in args.dataset],
+        "source_weight_multipliers": {"broad_teacher": 1.0, "mistake_only_auxiliary": 0.15},
         "unique_positions": len(positions),
         "train_positions": len(train_rows),
         "validation_positions": len(val_rows),
@@ -333,7 +369,10 @@ def train(args) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="datasets/missed_best_moves.jsonl")
+    parser.add_argument(
+        "--dataset", type=Path, action="append", required=True,
+        help="teacher label JSONL; repeat to combine broad labels and mistake-only auxiliary labels",
+    )
     parser.add_argument("--out", default="/tmp/nextgen_nnue.pt")
     parser.add_argument("--report", default="networks/nnue_training_report.json")
     parser.add_argument("--batch", type=int, default=128)
