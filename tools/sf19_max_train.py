@@ -230,6 +230,8 @@ def play_game(
     apply_opening(board, opening)
     moves = []
     our_moves = []  # (fen_before, move_uci, ply)
+    # Reset each engine's UCI game state between independent teacher games.
+    game_token = object()
     crashed = None
     while not board.is_game_over(claim_draw=True) and board.ply() < max_ply:
         is_our = (board.turn == chess.WHITE and our_white) or (
@@ -239,7 +241,7 @@ def play_game(
         limit = our_limit if is_our else sf_limit
         fen_before = board.fen()
         try:
-            result = engine.play(board, limit)
+            result = engine.play(board, limit, game=game_token)
         except Exception as e:
             crashed = f"{'nextgen' if is_our else 'sf19'}: {e}"
             break
