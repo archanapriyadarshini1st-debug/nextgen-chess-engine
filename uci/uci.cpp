@@ -128,6 +128,8 @@ void UCI::handle_setoption(const std::string& line) {
     } else if (name == "NNUEFile") {
         const bool ok = load_evaluation_nnue(value);
         std::cout << "info string NNUEFile " << (ok ? "loaded" : "failed to load") << " " << value << "\n";
+    } else if (name == "NNUEBlend") {
+        try { set_evaluation_nnue_blend(std::stoi(value)); } catch (...) {}
     } else if (name == "OwnBook") {
         use_book_ = (value=="true" || value=="True");
     } else if (name == "UCI_Chess960") {
@@ -249,6 +251,7 @@ int UCI::loop() {
             std::cout << "option name BookFile type string default <empty>\n";
             std::cout << "option name ExperienceFile type string default datasets/experience_book.txt\n";
             std::cout << "option name NNUEFile type string default <empty>\n";
+            std::cout << "option name NNUEBlend type spin default 70 min 0 max 100\n";
             std::cout << "option name OwnBook type check default false\n";
             std::cout << "option name MultiPV type spin default 1 min 1 max 5\n";
             std::cout << "option name Skill Level type spin default 20 min 0 max 20\n";

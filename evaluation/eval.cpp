@@ -314,11 +314,21 @@ int evaluate_threats(const Position& pos, Color c) {
 // This keeps classical-vs-NNUE tournaments honest and avoids silently loading
 // an incompatible or stale network merely because a file exists on disk.
 static NNUE g_nnue;
+// Tunable share of NNUE in the blended evaluator. No effect until a network is loaded.
+static int g_nnue_blend_percent = 70;
 
 } // namespace
 
 bool load_evaluation_nnue(const std::string& path) {
     return !path.empty() && g_nnue.load(path);
+}
+
+void set_evaluation_nnue_blend(int neural_percent) {
+    g_nnue_blend_percent = std::clamp(neural_percent, 0, 100);
+}
+
+int get_evaluation_nnue_blend() {
+    return g_nnue_blend_percent;
 }
 
 Score evaluate_handcrafted(const Position& pos) {
@@ -381,14 +391,14 @@ Score evaluate_handcrafted(const Position& pos) {
 }
 
 Score evaluate(const Position& pos) {
-    if (!g_nnue.is_loaded()) return evaluate_handcrafted(pos);
-
-    // The teacher network is trained to approximate Stockfish search scores.
-    // Blend it with the handcrafted evaluator initially so imperfect training
-    // data cannot completely erase known material/king-safety terms.
-    const Score neural = g_nnue.evaluate(pos);
     const Score classical = evaluate_handcrafted(pos);
-    const Score blended = (neural * 70 + classical * 30) / 100;
+    if (!g_nnue.is_loaded() || g_nnue_blend_percent <= 0) return classical;
+
+    const Score neural = g_nnue.evaluate(pos);
+    if (g_nnue_blend_percent >= 100) return std::clamp(neural, -10000, 10000);
+    const int neural_weight = std::clamp(g_nnue_blend_percent, 0, 100);
+    const Score blended =
+        (neural * neural_weight + classical * (100 - neural_weight)) / 100;
     return std::clamp(blended, -10000, 10000);
 }
 
