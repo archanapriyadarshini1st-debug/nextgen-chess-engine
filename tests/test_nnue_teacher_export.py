@@ -13,7 +13,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from training.train_nnue_teacher import (
-    FT_SIZE, HT1, HT2, QA, QB, TeacherNNUE, export_binary,
+    FT_SIZE, HT1, HT2, QA, QB, NNUE_MAGIC, NNUE_FORMAT_VERSION, TeacherNNUE, export_binary,
 )
 
 
@@ -44,13 +44,15 @@ def main() -> None:
         output = Path(folder) / "synthetic.nnue"
         export_binary(model, output)
         expected_size = (
-            FT_SIZE * HT1 * 2 + HT1 * 2
+            8 + 4 + FT_SIZE * HT1 * 2 + HT1 * 2
             + HT1 * 2 * HT2 * 2 + HT2 * 4 + HT2 * 2 + 4
         )
         assert output.stat().st_size == expected_size
 
         raw = output.read_bytes()
-        offset = 0
+        assert raw[:8] == NNUE_MAGIC
+        assert int.from_bytes(raw[8:12], "little", signed=False) == NNUE_FORMAT_VERSION
+        offset = 12
 
         def read_i16(count: int) -> np.ndarray:
             nonlocal offset
@@ -80,7 +82,7 @@ def main() -> None:
         assert int(l2_weights[0]) == QB
         assert int(l2_bias[0]) == 0
         assert offset == expected_size
-        print(f"NNUE exporter regression passed: {expected_size} bytes; synthetic output +400 cp")
+        print(f"NNUE v{NNUE_FORMAT_VERSION} exporter regression passed: {expected_size} bytes; synthetic output +400 cp")
 
 
 if __name__ == "__main__":
