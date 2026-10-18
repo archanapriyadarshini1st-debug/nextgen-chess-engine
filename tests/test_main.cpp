@@ -114,16 +114,23 @@ void test_nnue_binary_layout_and_score_scale() {
     std::vector<std::int16_t> l2_weights(NNUE_HT2, 0);
     std::int32_t l2_bias = 0;
 
-    // In this position, the white pawn on a7 has feature index 48:
-    // king h1 -> bucket 0, own pawn -> type 0, square a7 -> 48.
-    // Activating only FT[48][0] -> L1[0][0] -> L2[0] should evaluate to +400 cp.
+    // White-to-move: the white pawn on a7 is feature 48 in the us lane.
     ft_weights[48 * NNUE_HT1] = QA;
     l1_weights[0] = QB;
     l2_weights[0] = QB;
+    // Black-to-move: the white pawn is feature 328 in the them lane;
+    // use an independent negative path to verify STM perspective semantics.
+    ft_weights[328 * NNUE_HT1 + 1] = QA;
+    l1_weights[1 * NNUE_HT2 + 1] = QB;
+    l2_weights[1] = -QB;
 
     {
         std::ofstream out(path, std::ios::binary);
         assert(out.good());
+        const char magic[8] = {'N','G','N','N','U','E','0','2'};
+        const std::uint32_t version = 2;
+        out.write(magic, sizeof(magic));
+        out.write(reinterpret_cast<const char*>(&version), sizeof(version));
         out.write(reinterpret_cast<const char*>(ft_weights.data()),
                   static_cast<std::streamsize>(ft_weights.size() * sizeof(std::int16_t)));
         out.write(reinterpret_cast<const char*>(ft_bias.data()),
