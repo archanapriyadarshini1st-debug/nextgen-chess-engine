@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #if defined(__AVX2__)
 #include <immintrin.h>
 #endif
@@ -36,12 +38,24 @@ bool NNUE::load(const std::string& path) {
     if (path.empty()) { loaded_=false; return false; }
     std::ifstream in(path, std::ios::binary);
     if (!in) { loaded_=false; return false; }
-    // Binary layout (little-endian):
-    // feature_weights[FT][HT1] int16, feature_bias[HT1] int16,
-    // l1_weights[2*HT1][HT2] int16, l1_bias[HT2] int32,
-    // l2_weights[HT2] int16, l2_bias int32.
-    // Reject truncated AND oversized files so an old incompatible network
-    // can never be mistaken for a valid compact-feature model.
+    // Binary v2: 8-byte magic "NGNNUE02", then a little-endian uint32 version.
+    // Reject old white-POV weights; tensor dimensions alone cannot distinguish semantics.
+    char magic[8]{};
+    std::uint32_t version = 0;
+    in.read(magic, sizeof(magic));
+    in.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if (!in || std::memcmp(magic, "NGNNUE02", sizeof(magic)) != 0 || version != 2) {
+        loaded_ = false;
+        feature_weights_.clear();
+        feature_bias_.clear();
+        l1_weights_.clear();
+        l1_bias_.clear();
+        l2_weights_.clear();
+        l2_bias_ = 0;
+        return false;
+    }
+
+    // Reject truncated and oversized files rather than accepting an incompatible prefix.
     try {
         feature_weights_.resize(NNUE_FT_SIZE * NNUE_HT1);
         feature_bias_.resize(NNUE_HT1);
@@ -118,30 +132,24 @@ void NNUE::update_accumulator(const Position& pos, Accumulator& acc, Move m) con
 
 Score NNUE::evaluate(const Position& pos, const Accumulator& acc) const {
     if (!loaded_) return 0;
-    // perspective: side to move
-    Color stm = pos.side_to_move();
-    const auto &white = acc.white;
-    const auto &black = acc.black;
+    // Network predicts side-to-move score with lanes ordered [us, them].
+    const Color stm = pos.side_to_move();
+    const auto &us = (stm == Color::White ? acc.white : acc.black);
+    const auto &them = (stm == Color::White ? acc.black : acc.white);
 
-    // Clipped ReLU + affine for first layer
-    // HT1 256 -> for each side, we have 256 inputs, we concatenate white+black 512 -> L1 32
-    // Compute hidden L1
     std::array<int32_t, NNUE_HT2> hidden{};
-    for (int i=0;i<NNUE_HT2;++i) hidden[i]=l1_bias_[i];
+    for (int i = 0; i < NNUE_HT2; ++i) hidden[i] = l1_bias_[i];
 
-    // White perspective accumulator contributes to first 256 of L1 weights, black to second 256
-    // L1 weights layout: [512][32] = (256*2)*32
-    for (int j=0;j<NNUE_HT1;++j) {
-        int16_t w = std::clamp<int16_t>(white[j], 0, QA);
-        // White
-        for (int k=0;k<NNUE_HT2;++k) {
-            hidden[k] += w * l1_weights_[j*NNUE_HT2 + k];
+    for (int j = 0; j < NNUE_HT1; ++j) {
+        const int16_t value = std::clamp<int16_t>(us[j], 0, QA);
+        for (int k = 0; k < NNUE_HT2; ++k) {
+            hidden[k] += value * l1_weights_[j * NNUE_HT2 + k];
         }
     }
-    for (int j=0;j<NNUE_HT1;++j) {
-        int16_t b = std::clamp<int16_t>(black[j], 0, QA);
-        for (int k=0;k<NNUE_HT2;++k) {
-            hidden[k] += b * l1_weights_[(NNUE_HT1 + j)*NNUE_HT2 + k];
+    for (int j = 0; j < NNUE_HT1; ++j) {
+        const int16_t value = std::clamp<int16_t>(them[j], 0, QA);
+        for (int k = 0; k < NNUE_HT2; ++k) {
+            hidden[k] += value * l1_weights_[(NNUE_HT1 + j) * NNUE_HT2 + k];
         }
     }
 
@@ -158,7 +166,7 @@ Score NNUE::evaluate(const Position& pos, const Accumulator& acc) const {
         out += static_cast<std::int64_t>(hidden[k]) * l2_weights_[k];
     }
     const Score cp = static_cast<Score>(out * NNUE_SCALE / (QB * QB));
-    return stm == Color::White ? cp : -cp;
+    return cp;
 }
 
 Score NNUE::evaluate(const Position& pos) const {
