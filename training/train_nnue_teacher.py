@@ -3,9 +3,9 @@
 
 The input JSONL is produced by tools/sf19_max_train.py and contains at least
   fen, best_cp
-best_cp is Stockfish's score from the side-to-move perspective. The trainer
-converts it to White's perspective, because C++ flips the neural score for
-Black-to-move positions at inference.
+best_cp is Stockfish's score from the side-to-move perspective. Training
+uses that score directly and orders feature lanes as us/them, matching C++
+inference for either side to move.
 
 The exporter intentionally matches nnue/nnue.cpp's fixed-point layout:
   FT weights: [feature][hidden], QA-scaled
@@ -35,6 +35,8 @@ HT2 = 32
 QA = 255
 QB = 64
 SCORE_SCALE = 400
+NNUE_MAGIC = b"NGNNUE02"
+NNUE_FORMAT_VERSION = 2
 
 
 def piece_to_type(piece: Any, perspective_color: bool) -> int:
@@ -108,14 +110,15 @@ def load_positions(paths: list[Path], max_cp: int) -> list[dict[str, Any]]:
                 board = chess.Board(fen)
                 if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
                     continue
-                # Source data is side-to-move POV; inference flips the
-                # White-perspective network output for Black-to-move positions.
-                score_white_pov = int(score) if board.turn == chess.WHITE else -int(score)
+                # Stockfish labels are already from the side-to-move POV.
+                # Reorder king-conditioned streams so lane 0 is always "us".
+                score_stm_pov = int(score)
                 white, black = fen_to_features(fen)
-                if not white or not black:
+                us, them = (white, black) if board.turn == chess.WHITE else (black, white)
+                if not us or not them:
                     continue
                 key = " ".join(fen.split()[:4])
-                clipped = max(-max_cp, min(max_cp, score_white_pov))
+                clipped = max(-max_cp, min(max_cp, score_stm_pov))
                 try:
                     depth = int(record.get("teacher_depth", 8))
                 except (TypeError, ValueError):
@@ -126,7 +129,7 @@ def load_positions(paths: list[Path], max_cp: int) -> list[dict[str, Any]]:
                     key, {
                         "key": key, "fen": fen, "weighted_cp": 0.0,
                         "weight_sum": 0.0, "sources": set(),
-                        "white": white, "black": black,
+                        "us": us, "them": them,
                     }
                 )
                 slot["weighted_cp"] += clipped * label_weight
@@ -166,8 +169,8 @@ class FeatureDataset(Dataset):
     def __getitem__(self, index: int):
         row = self.rows[index]
         return (
-            row["white"],
-            row["black"],
+            row["us"],
+            row["them"],
             torch.tensor(float(row["target_cp"]) / SCORE_SCALE, dtype=torch.float32),
             torch.tensor(float(row["sample_weight"]), dtype=torch.float32),
         )
@@ -212,10 +215,10 @@ class TeacherNNUE(nn.Module):
         nn.init.xavier_uniform_(self.l2.weight)
         nn.init.zeros_(self.l2.bias)
 
-    def forward(self, white_indices, white_offsets, black_indices, black_offsets):
-        white = torch.clamp(self.ft(white_indices, white_offsets) + self.ft_bias, 0.0, 1.0)
-        black = torch.clamp(self.ft(black_indices, black_offsets) + self.ft_bias, 0.0, 1.0)
-        merged = torch.cat((white, black), dim=1)
+    def forward(self, us_indices, us_offsets, them_indices, them_offsets):
+        us = torch.clamp(self.ft(us_indices, us_offsets) + self.ft_bias, 0.0, 1.0)
+        them = torch.clamp(self.ft(them_indices, them_offsets) + self.ft_bias, 0.0, 1.0)
+        merged = torch.cat((us, them), dim=1)
         hidden = torch.clamp(self.l1(merged), 0.0, 1.0)
         return self.l2(hidden)
 
@@ -235,10 +238,13 @@ def export_binary(model: TeacherNNUE, output_path: Path) -> None:
     )
 
     with output_path.open("wb") as stream:
+        stream.write(NNUE_MAGIC)
+        stream.write(NNUE_FORMAT_VERSION.to_bytes(4, "little", signed=False))
         for array in (ft_w, ft_b, l1_w, l1_b, l2_w, l2_b):
             stream.write(array.tobytes(order="C"))
     expected = (
-        FT_SIZE * HT1 * 2
+        len(NNUE_MAGIC) + 4
+        + FT_SIZE * HT1 * 2
         + HT1 * 2
         + HT1 * 2 * HT2 * 2
         + HT2 * 4
@@ -349,6 +355,9 @@ def train(args) -> None:
 
     report = {
         "dataset": [str(path) for path in args.dataset],
+        "score_perspective": "side_to_move",
+        "feature_order": ["us", "them"],
+        "nnue_format_version": NNUE_FORMAT_VERSION,
         "source_weight_multipliers": {"broad_teacher": 1.0, "mistake_only_auxiliary": 0.15},
         "unique_positions": len(positions),
         "train_positions": len(train_rows),
