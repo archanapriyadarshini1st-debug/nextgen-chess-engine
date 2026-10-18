@@ -60,10 +60,13 @@ def run_match(engine_path: Path, candidate: Path, blend: int, games: int,
             for uci in opening_moves:
                 board.push_uci(uci)
 
+            # A fresh game token forces UCI ucinewgame on both processes so
+            # transposition tables from a prior game cannot bleed into the next.
+            game_token = object()
             while not board.is_game_over(claim_draw=True) and board.ply() < max_plies:
                 candidate_turn = (board.turn == chess.WHITE) == candidate_white
                 engine = candidate_engine if candidate_turn else champion_engine
-                move = engine.play(board, limit).move
+                move = engine.play(board, limit, game=game_token).move
                 if move is None or move not in board.legal_moves:
                     raise RuntimeError(f"Illegal/missing move in game {index + 1}")
                 board.push(move)
