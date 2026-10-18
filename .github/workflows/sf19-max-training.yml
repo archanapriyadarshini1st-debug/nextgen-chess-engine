@@ -141,7 +141,9 @@ jobs:
         run: |
           cp /tmp/nextgen_candidate.nnue networks/nnue.nnue
           test -s networks/nnue.nnue
-          echo "Promoted NNUE at blend $(python -c 'import json; print(json.load(open("networks/candidate_validation.json"))["tuned_blend_percent"])')%."
+          BLEND="$(python -c "import json; print(json.load(open('networks/candidate_validation.json'))['tuned_blend_percent'])")"
+          printf '%s\n' "$BLEND" > networks/nnue_blend.txt
+          echo "Promoted NNUE with tuned blend ${BLEND}%."
 
       - name: Summarize candidate result
         if: always()
@@ -168,7 +170,7 @@ jobs:
             if [ -f "$file" ]; then git add "$file"; fi
           done
           if [ "${{ steps.validate.outcome }}" = "success" ]; then
-            git add -f networks/nnue.nnue
+            git add -f networks/nnue.nnue networks/nnue_blend.txt
           fi
           if git diff --cached --quiet; then
             echo "No teacher data or report changes to commit."

@@ -320,7 +320,19 @@ static int g_nnue_blend_percent = 70;
 } // namespace
 
 bool load_evaluation_nnue(const std::string& path) {
-    return !path.empty() && g_nnue.load(path);
+    if (path.empty() || !g_nnue.load(path)) return false;
+
+    // A promoted network carries its tuned blend beside the weights. Candidate
+    // validation uses /tmp and explicitly overrides NNUEBlend, while loading
+    // networks/nnue.nnue restores the weight selected by the held-out match.
+    const auto sep = path.find_last_of("/\\");
+    const std::string directory = (sep == std::string::npos) ? "." : path.substr(0, sep);
+    std::ifstream blend_file(directory + "/nnue_blend.txt");
+    int stored_blend = 0;
+    if (blend_file >> stored_blend) {
+        g_nnue_blend_percent = std::clamp(stored_blend, 0, 100);
+    }
+    return true;
 }
 
 void set_evaluation_nnue_blend(int neural_percent) {
