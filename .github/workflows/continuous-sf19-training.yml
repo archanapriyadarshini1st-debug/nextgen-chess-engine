@@ -1,0 +1,183 @@
+name: Continuous Stockfish 19 training
+
+on:
+  workflow_dispatch:
+    inputs:
+      batches:
+        description: "How many sequential training rounds to run"
+        type: choice
+        required: true
+        default: "10"
+        options: ["1", "3", "5", "10"]
+      games_per_batch:
+        description: "Teacher games in each round"
+        type: choice
+        required: true
+        default: "100"
+        options: ["100", "250", "500"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nextgen-continuous-training-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  continuous-train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out experiment branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools and chess tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake
+          python -m pip install --upgrade pip
+          python -m pip install python-chess numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python tests/test_nnue_teacher_export.py
+          python -m py_compile tools/sf19_max_train.py tools/label_teacher_positions.py tools/validate_nnue_candidate.py training/train_nnue_teacher.py
+
+      - name: Build and run correctness tests
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          mkdir -p bin
+          cp build/chess_engine bin/chess_engine
+
+      - name: Download official Stockfish 19 universal binary
+        run: |
+          mkdir -p /tmp/sf19
+          curl --fail --location --retry 3 https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz --output /tmp/stockfish19.tar.gz
+          tar -xzf /tmp/stockfish19.tar.gz -C /tmp/sf19 --strip-components=1
+          STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
+          test -n "$STOCKFISH_BIN"
+          ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
+          find /tmp/sf19 -type f -name '*.nnue' -exec cp -f {} . \;
+          chmod +x /tmp/sf19/stockfish19
+          /tmp/sf19/stockfish19 <<'EOF'
+          uci
+          quit
+          EOF
+
+      - name: Run sequential train-label-learn-validate rounds
+        env:
+          BATCHES: ${{ inputs.batches }}
+          GAMES_PER_BATCH: ${{ inputs.games_per_batch }}
+        run: |
+          set -euo pipefail
+          mkdir -p datasets/continuous networks/continuous
+          for batch in $(seq 1 "$BATCHES"); do
+            echo "## Continuous training batch $batch/$BATCHES" >> "$GITHUB_STEP_SUMMARY"
+            echo "Games this batch: $GAMES_PER_BATCH" >> "$GITHUB_STEP_SUMMARY"
+
+            python tools/sf19_max_train.py train \
+              --games "$GAMES_PER_BATCH" \
+              --our-ms 120 \
+              --sf-ms 120 \
+              --analyse-depth 8 \
+              --min-cp-loss 50
+
+            # Add fresh broad labels to a cumulative dataset so later rounds
+            # learn from earlier rounds instead of throwing earlier labels away.
+            python tools/label_teacher_positions.py \
+              --pgn datasets/games_vs_sf19.pgn \
+              --missed datasets/missed_best_moves.jsonl \
+              --stockfish /tmp/sf19/stockfish19 \
+              --out "/tmp/teacher_batch_${batch}.jsonl" \
+              --sample-every-plies 8 \
+              --max-positions 400 \
+              --depth 12 \
+              --critical-count 40 \
+              --critical-depth 20 \
+              --elite-count 4 \
+              --elite-depth 28 \
+              --bulk-time-limit 1.5 \
+              --critical-time-limit 5 \
+              --elite-time-limit 12 \
+              --seed "$((19019 + batch))"
+            cat "/tmp/teacher_batch_${batch}.jsonl" >> datasets/teacher_eval_positions.jsonl
+
+            python training/train_nnue_teacher.py \
+              --dataset datasets/teacher_eval_positions.jsonl \
+              --dataset datasets/missed_best_moves.jsonl \
+              --out "/tmp/nextgen_candidate_batch_${batch}.pt" \
+              --report "networks/continuous/training_batch_${batch}.json" \
+              --epochs 24 \
+              --patience 5 \
+              --batch 128 \
+              --threads 2 \
+              --cpu
+            test -s "/tmp/nextgen_candidate_batch_${batch}.nnue"
+            cp "/tmp/nextgen_candidate_batch_${batch}.nnue" networks/candidate.nnue
+            cp "networks/continuous/training_batch_${batch}.json" networks/nnue_training_report.json
+
+            set -o pipefail
+            printf 'uci\nsetoption name NNUEFile value /tmp/nextgen_candidate_batch_%s.nnue\nsetoption name NNUEBlend value 30\nisready\nposition startpos\ngo depth 6\nquit\n' "$batch" \
+              | ./bin/chess_engine | tee "/tmp/nnue_smoke_batch_${batch}.txt"
+            grep -F "NNUEFile loaded /tmp/nextgen_candidate_batch_${batch}.nnue" "/tmp/nnue_smoke_batch_${batch}.txt"
+            grep -E '^bestmove [a-h][1-8][a-h][1-8]' "/tmp/nnue_smoke_batch_${batch}.txt"
+            set +o pipefail
+
+            # Validation failure rejects only this candidate; the loop continues.
+            if python tools/validate_nnue_candidate.py \
+              --candidate "/tmp/nextgen_candidate_batch_${batch}.nnue" \
+              --blend-candidates 15,30,45,70 \
+              --tune-games 16 \
+              --games 80 \
+              --move-time 0.15 \
+              --min-score 0.55 \
+              --seed "$((19120 + batch * 1000))" \
+              --report "networks/continuous/validation_batch_${batch}.json"; then
+              cp "/tmp/nextgen_candidate_batch_${batch}.nnue" networks/nnue.nnue
+              python -c "import json; p='networks/continuous/validation_batch_${batch}.json'; print(json.load(open(p))['tuned_blend_percent'])" > networks/nnue_blend.txt
+              echo "Batch $batch: candidate passed the existing validation gate and was promoted." | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "Batch $batch: candidate rejected; previous promoted file was kept." | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+
+            cp "networks/continuous/validation_batch_${batch}.json" "networks/candidate_validation.json" 2>/dev/null || true
+          done
+
+      - name: Persist datasets and batch reports
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add datasets networks/continuous networks/nnue_training_report.json networks/candidate_validation.json
+          if [ -f networks/nnue.nnue ]; then git add -f networks/nnue.nnue; fi
+          if [ -f networks/nnue_blend.txt ]; then git add networks/nnue_blend.txt; fi
+          if git diff --cached --quiet; then
+            echo "No new training outputs to persist."
+          else
+            git commit -m "train: run continuous Stockfish 19 batches"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Upload all continuous training outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-continuous-training-${{ inputs.batches }}x${{ inputs.games_per_batch }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            datasets/games_vs_sf19.pgn
+            datasets/games_vs_sf19.jsonl
+            datasets/missed_best_moves.jsonl
+            datasets/teacher_eval_positions.jsonl
+            networks/continuous/
+            networks/candidate.nnue
+            networks/nnue.nnue
+            networks/nnue_blend.txt
