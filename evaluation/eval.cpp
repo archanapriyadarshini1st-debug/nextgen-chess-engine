@@ -2,8 +2,8 @@
 #include "../nnue/nnue.h"
 #include <algorithm>
 #include <cmath>
-#include <mutex>
 #include <iostream>
+#include <fstream>
 
 namespace chess {
 namespace {
@@ -253,21 +253,21 @@ int evaluate_mobility(const Position& pos, Color c) {
 }
 
 int evaluate_space(const Position& pos, Color c) {
-    // Space: count safe squares in center and enemy territory controlled
-    int space=0;
-    int startRank = (c==Color::White? 2:3);
-    int endRank = (c==Color::White? 5:6);
-    for (int r=startRank;r<=endRank;++r) {
-        for (int f=2;f<=5;++f) {
-            int sq=square_of(f,r);
-            if (pos.board()[sq]==Piece::None) {
-                // if attacked by own pawn or minor and not attacked by enemy pawn
-                // simplified: +1 if empty
-                space+=1;
-            }
+    // Reward genuinely controlled central squares, not merely empty squares.
+    // Count only squares attacked by this side; squares also attacked by the
+    // opponent receive a smaller bonus because they are contested.
+    const Color them = (c == Color::White ? Color::Black : Color::White);
+    int score = 0;
+    for (int r = 2; r <= 5; ++r) {
+        for (int f = 2; f <= 5; ++f) {
+            const int sq = square_of(f, r);
+            const bool ours = pos.square_attacked(sq, c);
+            if (!ours) continue;
+            const bool theirs = pos.square_attacked(sq, them);
+            score += theirs ? 1 : 3;
         }
     }
-    return space*2;
+    return score;
 }
 
 int evaluate_knight_discipline(const Position& pos, Color c) {
@@ -311,25 +311,37 @@ int evaluate_threats(const Position& pos, Color c) {
     return score;
 }
 
-// Global NNUE with thread-safe lazy load
+// NNUE is opt-in: a network is loaded only through the UCI NNUEFile option.
+// This keeps classical-vs-NNUE tournaments honest and avoids silently loading
+// an incompatible or stale network merely because a file exists on disk.
 static NNUE g_nnue;
-static std::once_flag g_nnue_flag;
-
-void try_load_nnue() {
-    std::call_once(g_nnue_flag, [](){
-        // Respect a network explicitly loaded with the UCI NNUEFile option.
-        if (g_nnue.is_loaded()) return;
-        const char* paths[] = {"networks/nnue.nnue","/home/user/nextgen-chess-engine/networks/nnue.nnue","nnue.nnue","/tmp/nnue.nnue"};
-        for (auto p : paths) {
-            if (g_nnue.load(p)) break;
-        }
-    });
-}
+// Tunable share of NNUE in the blended evaluator. No effect until a network is loaded.
+static int g_nnue_blend_percent = 70;
 
 } // namespace
 
 bool load_evaluation_nnue(const std::string& path) {
-    return !path.empty() && g_nnue.load(path);
+    if (path.empty() || !g_nnue.load(path)) return false;
+
+    // A promoted network carries its tuned blend beside the weights. Candidate
+    // validation uses /tmp and explicitly overrides NNUEBlend, while loading
+    // networks/nnue.nnue restores the weight selected by the held-out match.
+    const auto sep = path.find_last_of("/\\");
+    const std::string directory = (sep == std::string::npos) ? "." : path.substr(0, sep);
+    std::ifstream blend_file(directory + "/nnue_blend.txt");
+    int stored_blend = 0;
+    if (blend_file >> stored_blend) {
+        g_nnue_blend_percent = std::clamp(stored_blend, 0, 100);
+    }
+    return true;
+}
+
+void set_evaluation_nnue_blend(int neural_percent) {
+    g_nnue_blend_percent = std::clamp(neural_percent, 0, 100);
+}
+
+int get_evaluation_nnue_blend() {
+    return g_nnue_blend_percent;
 }
 
 Score evaluate_handcrafted(const Position& pos) {
@@ -392,15 +404,14 @@ Score evaluate_handcrafted(const Position& pos) {
 }
 
 Score evaluate(const Position& pos) {
-    try_load_nnue();
-    if (!g_nnue.is_loaded()) return evaluate_handcrafted(pos);
-
-    // The teacher network is trained to approximate Stockfish search scores.
-    // Blend it with the handcrafted evaluator initially so imperfect training
-    // data cannot completely erase known material/king-safety terms.
-    const Score neural = g_nnue.evaluate(pos);
     const Score classical = evaluate_handcrafted(pos);
-    const Score blended = (neural * 70 + classical * 30) / 100;
+    if (!g_nnue.is_loaded() || g_nnue_blend_percent <= 0) return classical;
+
+    const Score neural = g_nnue.evaluate(pos);
+    if (g_nnue_blend_percent >= 100) return std::clamp(neural, -10000, 10000);
+    const int neural_weight = std::clamp(g_nnue_blend_percent, 0, 100);
+    const Score blended =
+        (neural * neural_weight + classical * (100 - neural_weight)) / 100;
     return std::clamp(blended, -10000, 10000);
 }
 

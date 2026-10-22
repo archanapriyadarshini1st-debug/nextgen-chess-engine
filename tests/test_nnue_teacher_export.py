@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import sys
+import json
 from pathlib import Path
 
 import numpy as np
@@ -13,11 +14,34 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from training.train_nnue_teacher import (
-    FT_SIZE, HT1, HT2, QA, QB, TeacherNNUE, export_binary,
+    FT_SIZE, HT1, HT2, QA, QB, NNUE_MAGIC, NNUE_FORMAT_VERSION,
+    TeacherNNUE, export_binary, fen_to_features, load_positions,
 )
 
 
+def test_side_to_move_target_and_feature_order() -> None:
+    fen_white = "7k/P7/8/8/8/8/8/7K w - - 0 1"
+    fen_black = "7k/P7/8/8/8/8/8/7K b - - 0 1"
+    with tempfile.TemporaryDirectory(prefix="nextgen-nnue-pov-") as folder:
+        path = Path(folder) / "teacher_eval_positions.jsonl"
+        rows = [
+            {"fen": fen_white, "best_cp": 400, "teacher_depth": 20},
+            {"fen": fen_black, "best_cp": -250, "teacher_depth": 20},
+        ]
+        path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+        loaded = load_positions([path], max_cp=1200)
+        by_turn = {row["fen"].split()[1]: row for row in loaded}
+        white_features, black_features = fen_to_features(fen_white)
+        assert abs(by_turn["w"]["target_cp"] - 400) < 1e-6
+        assert abs(by_turn["b"]["target_cp"] + 250) < 1e-6
+        assert by_turn["w"]["us"] == white_features
+        assert by_turn["w"]["them"] == black_features
+        assert by_turn["b"]["us"] == black_features
+        assert by_turn["b"]["them"] == white_features
+
+
 def main() -> None:
+    test_side_to_move_target_and_feature_order()
     torch.manual_seed(1)
     model = TeacherNNUE().cpu().eval()
     with torch.no_grad():
@@ -44,13 +68,15 @@ def main() -> None:
         output = Path(folder) / "synthetic.nnue"
         export_binary(model, output)
         expected_size = (
-            FT_SIZE * HT1 * 2 + HT1 * 2
+            8 + 4 + FT_SIZE * HT1 * 2 + HT1 * 2
             + HT1 * 2 * HT2 * 2 + HT2 * 4 + HT2 * 2 + 4
         )
         assert output.stat().st_size == expected_size
 
         raw = output.read_bytes()
-        offset = 0
+        assert raw[:8] == NNUE_MAGIC
+        assert int.from_bytes(raw[8:12], "little", signed=False) == NNUE_FORMAT_VERSION
+        offset = 12
 
         def read_i16(count: int) -> np.ndarray:
             nonlocal offset
@@ -80,7 +106,7 @@ def main() -> None:
         assert int(l2_weights[0]) == QB
         assert int(l2_bias[0]) == 0
         assert offset == expected_size
-        print(f"NNUE exporter regression passed: {expected_size} bytes; synthetic output +400 cp")
+        print(f"NNUE v{NNUE_FORMAT_VERSION} exporter regression passed: {expected_size} bytes; synthetic output +400 cp")
 
 
 if __name__ == "__main__":
