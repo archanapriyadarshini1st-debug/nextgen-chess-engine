@@ -137,6 +137,16 @@ jobs:
                   f.write("\nSee the artifact JSON for top positions and principal variations. The audit's cp-loss estimates are diagnostic, not a rating.\n")
           PY
 
+      - name: Verify requested match completed
+        if: always()
+        run: |
+          code_file=artifacts/strict-10plus0/match-exit-code.txt
+          if [ ! -f "$code_file" ] || [ "$(cat "$code_file")" != "0" ]; then
+            echo "::error::Strict match did not complete all requested games. See uploaded partial logs."
+            exit 1
+          fi
+          test -s artifacts/strict-10plus0/weakness-report.json
+
       - name: Upload match PGN, reports, and clock records
         if: always()
         uses: actions/upload-artifact@v4
