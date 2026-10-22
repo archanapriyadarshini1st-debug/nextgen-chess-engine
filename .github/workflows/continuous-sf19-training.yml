@@ -1,6 +1,13 @@
 name: Continuous Stockfish 19 training
 
 on:
+  # A workflow_dispatch event is only available after the workflow reaches the default branch.
+  # This branch-scoped push trigger lets the experiment start without modifying main.
+  push:
+    branches:
+      - feature/validated-self-improvement
+    paths:
+      - '.github/workflows/continuous-sf19-training.yml'
   workflow_dispatch:
     inputs:
       batches:
@@ -73,8 +80,8 @@ jobs:
 
       - name: Run sequential train-label-learn-validate rounds
         env:
-          BATCHES: ${{ inputs.batches }}
-          GAMES_PER_BATCH: ${{ inputs.games_per_batch }}
+          BATCHES: ${{ inputs.batches || '10' }}
+          GAMES_PER_BATCH: ${{ inputs.games_per_batch || '100' }}
         run: |
           set -euo pipefail
           mkdir -p datasets/continuous networks/continuous
