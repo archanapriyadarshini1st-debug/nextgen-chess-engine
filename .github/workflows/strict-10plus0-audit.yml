@@ -1,0 +1,157 @@
+name: Strict 10+0 Stockfish 19 MAX audit
+
+on:
+  # Launch one strict benchmark after the audit code is in place. The branch
+  # filter keeps this expensive 10+0 job separate from continuous fast training.
+  push:
+    branches:
+      - feature/strict-10plus0-audit
+    paths:
+      - 'tools/clock_match.py'
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "Even number of 10+0 games (color-paired)"
+        type: choice
+        required: true
+        default: "8"
+        options: ["4", "8", "12"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nextgen-strict-10plus0-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  strict-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GAMES: ${{ inputs.games || '8' }}
+    steps:
+      - name: Check out strict audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install chess tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install python-chess
+          python -m py_compile tools/clock_match.py tools/analyze_engine_weakness.py tests/test_engine_weakness_audit.py
+          python tests/test_engine_weakness_audit.py
+
+      - name: Build and test NextGen
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          mkdir -p bin
+          cp build/chess_engine bin/chess_engine
+
+      - name: Download official Stockfish 19
+        run: |
+          mkdir -p /tmp/sf19
+          curl --fail --location --retry 3 https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz --output /tmp/stockfish19.tar.gz
+          tar -xzf /tmp/stockfish19.tar.gz -C /tmp/sf19 --strip-components=1
+          STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
+          test -n "$STOCKFISH_BIN"
+          ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
+          chmod +x /tmp/sf19/stockfish19
+          /tmp/sf19/stockfish19 <<'EOF'
+          uci
+          quit
+          EOF
+
+      - name: Play strict 10+0 match against Stockfish 19 MAX
+        id: match
+        run: |
+          set +e
+          mkdir -p artifacts/strict-10plus0
+          python tools/clock_match.py \
+            --games "$GAMES" \
+            --tc 600+0 \
+            --sf-elo 0 \
+            --hash-mb 256 \
+            --tag strict-10plus0-max \
+            --jsonl artifacts/strict-10plus0/match.jsonl \
+            --pgn artifacts/strict-10plus0/match.pgn \
+            --summary artifacts/strict-10plus0/match-summary.json
+          match_exit=$?
+          set -e
+          echo "$match_exit" > artifacts/strict-10plus0/match-exit-code.txt
+          test -s artifacts/strict-10plus0/match.pgn
+          exit 0
+
+      - name: Deep-analyse critical NextGen mistakes
+        run: |
+          python tools/analyze_engine_weakness.py \
+            --pgn artifacts/strict-10plus0/match.pgn \
+            --stockfish /tmp/sf19/stockfish19 \
+            --quick-seconds 0.35 \
+            --critical-seconds 30 \
+            --threshold-cp 120 \
+            --top-critical 25 \
+            --hash-mb 256 \
+            --out artifacts/strict-10plus0/weakness-report.json
+
+      - name: Summarize match and weaknesses
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          summary = Path("artifacts/strict-10plus0/match-summary.json")
+          report = Path("artifacts/strict-10plus0/weakness-report.json")
+          out = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with out.open("a", encoding="utf-8") as f:
+              f.write("# Strict Stockfish 19 MAX audit — 10+0\n\n")
+              if summary.exists():
+                  s = json.loads(summary.read_text())
+                  f.write("## Match\n\n")
+                  f.write(f"- Result: **{s['wins']} wins, {s['draws']} draws, {s['losses']} losses**\n")
+                  f.write(f"- Score: **{s['score_fraction']:.1%}** across {s['games']} games\n")
+                  f.write(f"- Time control: **{s['time_control_seconds']:g}+{s['increment_seconds']:g} seconds**\n")
+                  f.write(f"- Engine resources: {s['threads_each']} thread(s), {s['hash_mb_each']} MB hash each\n")
+                  f.write(f"- Experience book enabled: {s['experience_book_enabled']}\n")
+                  f.write(f"- Estimated Elo: {s['elo_estimate']} (not estimated against MAX)\n\n")
+              if report.exists():
+                  r = json.loads(report.read_text())
+                  f.write("## Mistake audit\n\n")
+                  f.write(f"- NextGen moves scanned: {r['nextgen_moves_scanned']}\n")
+                  f.write(f"- Apparent losses ≥{r['threshold_cp']} cp: {r['apparent_mistakes_at_or_above_threshold']}\n")
+                  f.write(f"- Deep positions completed: {r['deep_positions_completed']}\n\n")
+                  f.write("| Phase | Moves | Mean cp loss | 300+ cp losses | 800+ cp losses |\n|---|---:|---:|---:|---:|\n")
+                  for phase, row in r["summary_by_phase"].items():
+                      f.write(f"| {phase} | {row['moves']} | {row['mean_cp_loss']} | {row['cp_loss_300_plus']} | {row['cp_loss_800_plus']} |\n")
+                  f.write("\nSee the artifact JSON for top positions and principal variations. The audit's cp-loss estimates are diagnostic, not a rating.\n")
+          PY
+
+      - name: Verify requested match completed
+        if: always()
+        run: |
+          code_file=artifacts/strict-10plus0/match-exit-code.txt
+          if [ ! -f "$code_file" ] || [ "$(cat "$code_file")" != "0" ]; then
+            echo "::error::Strict match did not complete all requested games. See uploaded partial logs."
+            exit 1
+          fi
+          test -s artifacts/strict-10plus0/weakness-report.json
+
+      - name: Upload match PGN, reports, and clock records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-strict-10plus0-audit
+          if-no-files-found: warn
+          retention-days: 30
+          path: artifacts/strict-10plus0/

@@ -97,8 +97,20 @@ int Search::complexity_score(const Position& pos) const {
 }
 
 int Search::adaptive_depth(const Position& pos, const Limits& limits) const {
-    if (limits.depth > 0) return limits.depth;
-    int c = complexity_score(pos);
+    // A requested fixed depth remains an explicit bound, but do not let it
+    // exceed the ply-indexed search arrays.
+    if (limits.depth > 0) return std::clamp(limits.depth, 1, MAX_PLY - 2);
+
+    // For clocked/movetime searches, do not stop merely because an arbitrary
+    // position-based depth target (previously 18-30) was reached. Iterate
+    // deeper until the time manager stops the search. MAX_PLY - 2 is only a
+    // safety ceiling beyond the practical reach of normal clock controls.
+    if (limit_ms_ > 0) return MAX_PLY - 2;
+
+    // Untimed calls without an explicit depth keep the conservative adaptive
+    // target. A future UCI stop implementation is required before truly
+    // unbounded "go infinite" can be made interruptible.
+    const int c = complexity_score(pos);
     int base = 18;
     if (c < 35) base = 18;
     else if (c < 60) base = 22;
@@ -106,14 +118,7 @@ int Search::adaptive_depth(const Position& pos, const Limits& limits) const {
     else if (c < 110) base = 30;
     else base = 34;
 
-    if (limit_ms_ > 0) {
-        if (limit_ms_ < 800) base = std::min(base, 14);
-        else if (limit_ms_ < 1500) base = std::min(base, 18);
-        else if (limit_ms_ < 4000) base = std::min(base, 22);
-        else if (limit_ms_ < 10000) base = std::min(base, 26);
-        else base = std::min(base, 30);
-    }
-    return std::clamp(base, 12, 40);
+    return std::clamp(base, 12, std::min(40, MAX_PLY - 2));
 }
 
 int Search::score_move(const Position& pos, Move m, Move tt_move, int ply) const {
