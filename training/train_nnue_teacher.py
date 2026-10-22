@@ -152,10 +152,6 @@ def load_positions(paths: list[Path], max_cp: int) -> list[dict[str, Any]]:
         f"rows={file_counts}; skipped malformed={malformed}; "
         f"broad={broad_count}; mistake-only={len(positions)-broad_count}"
     )
-    if len(positions) < 100:
-        raise SystemExit("Refusing to train: fewer than 100 usable teacher positions.")
-    if broad_count == 0:
-        raise SystemExit("Refusing to train without broad, non-mistake-only teacher positions.")
     return positions
 
 
@@ -267,6 +263,12 @@ def train(args) -> None:
     )
 
     positions = load_positions(args.dataset, args.max_cp)
+    # Keep the production-data guard in the training entry point, not in the
+    # reusable loader: small synthetic datasets are required by regression tests.
+    if len(positions) < 100:
+        raise SystemExit("Refusing to train: fewer than 100 usable teacher positions.")
+    if not any(row["sample_weight"] >= 1.0 for row in positions):
+        raise SystemExit("Refusing to train without broad, non-mistake-only teacher positions.")
     # Stable FEN-based split ensures duplicate positions never leak into both
     # train and validation data.
     train_rows, val_rows = [], []
