@@ -162,9 +162,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add datasets networks/continuous networks/nnue_training_report.json networks/candidate_validation.json
+          mkdir -p networks/continuous
+          git add -A datasets networks/continuous
+          for file in networks/nnue_training_report.json networks/candidate_validation.json networks/nnue_blend.txt; do
+            if [ -f "$file" ]; then git add "$file"; fi
+          done
           if [ -f networks/nnue.nnue ]; then git add -f networks/nnue.nnue; fi
-          if [ -f networks/nnue_blend.txt ]; then git add networks/nnue_blend.txt; fi
           if git diff --cached --quiet; then
             echo "No new training outputs to persist."
           else
@@ -176,7 +179,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nextgen-continuous-training-${{ inputs.batches }}x${{ inputs.games_per_batch }}
+          name: nextgen-continuous-training-${{ inputs.batches || '10' }}x${{ inputs.games_per_batch || '100' }}
           if-no-files-found: warn
           retention-days: 30
           path: |
