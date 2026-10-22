@@ -32,8 +32,8 @@ def test_side_to_move_target_and_feature_order() -> None:
         loaded = load_positions([path], max_cp=1200)
         by_turn = {row["fen"].split()[1]: row for row in loaded}
         white_features, black_features = fen_to_features(fen_white)
-        assert by_turn["w"]["target_cp"] == 400
-        assert by_turn["b"]["target_cp"] == -250
+        assert abs(by_turn["w"]["target_cp"] - 400) < 1e-6
+        assert abs(by_turn["b"]["target_cp"] + 250) < 1e-6
         assert by_turn["w"]["us"] == white_features
         assert by_turn["w"]["them"] == black_features
         assert by_turn["b"]["us"] == black_features
