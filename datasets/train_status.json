@@ -1,100 +1,100 @@
 {
-  "updated": "2026-10-14T14:30:22Z",
+  "updated": "2026-10-22T19:35:47Z",
   "played": 100,
   "wins": 0,
-  "losses": 100,
-  "draws": 0,
-  "score": 0.0,
-  "est_elo_vs_sf19_max": 2698.7215770318044,
-  "missed_moves_run": 773,
-  "missed_moves_all": 9996,
+  "losses": 99,
+  "draws": 1,
+  "score": 0.005,
+  "est_elo_vs_sf19_max": 2820.0,
+  "missed_moves_run": 661,
+  "missed_moves_all": 15598,
   "weaknesses": {
-    "updated": "2026-10-14T14:30:22Z",
-    "games": 800,
+    "updated": "2026-10-22T19:35:47Z",
+    "games": 1600,
     "results": {
-      "loss": 794,
-      "draw": 6
+      "loss": 1593,
+      "draw": 7
     },
-    "missed_moves": 9996,
+    "missed_moves": 15598,
     "by_phase": {
       "opening": {
-        "moves": 3754,
-        "avg_cp_loss": 217.3407032498668,
-        "blunders": 674
+        "moves": 4619,
+        "avg_cp_loss": 236.03074258497512,
+        "blunders": 1013
       },
       "middlegame": {
-        "moves": 6190,
-        "avg_cp_loss": 1144.262197092084,
-        "blunders": 1202
+        "moves": 10900,
+        "avg_cp_loss": 1161.8465137614678,
+        "blunders": 2406
       },
       "endgame": {
-        "moves": 52,
-        "avg_cp_loss": 2066.6153846153848,
-        "blunders": 15
+        "moves": 79,
+        "avg_cp_loss": 2403.2025316455697,
+        "blunders": 26
       }
     },
     "blunders_by_piece": {
-      "N": 2048,
-      "P": 2743,
-      "Q": 994,
-      "K": 1415,
-      "B": 1457,
-      "R": 1339
+      "N": 3025,
+      "P": 4146,
+      "Q": 1807,
+      "K": 2087,
+      "B": 2318,
+      "R": 2215
     },
     "top_reasons": [
       [
         "positional improvement",
-        6395
-      ],
-      [
-        "develops a piece",
-        1065
+        10371
       ],
       [
         "occupies centre",
-        921
+        1374
+      ],
+      [
+        "develops a piece",
+        1215
       ],
       [
         "you pushed a wing pawn instead",
-        548
+        846
       ],
       [
         "castles (king safety)",
-        187
-      ],
-      [
-        "occupies centre; you pushed a wing pawn instead",
-        88
+        293
       ],
       [
         "gives check; forcing; you missed a check",
-        79
+        168
       ],
       [
-        "develops a piece; you pushed a wing pawn instead",
-        64
-      ],
-      [
-        "occupies centre; develops a piece",
-        60
+        "occupies centre; you pushed a wing pawn instead",
+        132
       ],
       [
         "wins p; you missed a capture",
-        42
+        89
+      ],
+      [
+        "occupies centre; develops a piece",
+        75
+      ],
+      [
+        "develops a piece; you pushed a wing pawn instead",
+        69
       ],
       [
         "wins P; you missed a capture",
-        40
+        67
       ],
       [
-        "wins P; occupies centre; you missed a capture",
-        37
+        "wins p",
+        67
       ]
     ],
     "severity": {
-      "inaccuracy": 5846,
-      "blunder": 1891,
-      "mistake": 2259
+      "inaccuracy": 7574,
+      "blunder": 3445,
+      "mistake": 4579
     }
   }
 }

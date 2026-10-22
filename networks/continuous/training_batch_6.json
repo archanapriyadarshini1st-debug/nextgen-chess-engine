@@ -1,0 +1,26 @@
+{
+  "dataset": [
+    "datasets/teacher_eval_positions.jsonl",
+    "datasets/missed_best_moves.jsonl"
+  ],
+  "score_perspective": "side_to_move",
+  "feature_order": [
+    "us",
+    "them"
+  ],
+  "nnue_format_version": 2,
+  "source_weight_multipliers": {
+    "broad_teacher": 1.0,
+    "mistake_only_auxiliary": 0.15
+  },
+  "unique_positions": 14568,
+  "train_positions": 13153,
+  "validation_positions": 1415,
+  "max_cp_clamp": 1200,
+  "best_epoch": 21,
+  "validation_mae_cp": 124.04,
+  "network_path": "/tmp/nextgen_candidate_batch_6.nnue",
+  "feature_count": 5120,
+  "hidden_1": 256,
+  "hidden_2": 32
+}

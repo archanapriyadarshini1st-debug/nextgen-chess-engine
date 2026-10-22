@@ -1,12 +1,25 @@
 {
-  "dataset": "datasets/missed_best_moves.jsonl",
-  "unique_positions": 9106,
-  "train_positions": 8222,
-  "validation_positions": 884,
+  "dataset": [
+    "datasets/teacher_eval_positions.jsonl",
+    "datasets/missed_best_moves.jsonl"
+  ],
+  "score_perspective": "side_to_move",
+  "feature_order": [
+    "us",
+    "them"
+  ],
+  "nnue_format_version": 2,
+  "source_weight_multipliers": {
+    "broad_teacher": 1.0,
+    "mistake_only_auxiliary": 0.15
+  },
+  "unique_positions": 16229,
+  "train_positions": 14639,
+  "validation_positions": 1590,
   "max_cp_clamp": 1200,
-  "best_epoch": 20,
-  "validation_mae_cp": 78.08,
-  "network_path": "/tmp/nextgen_candidate.nnue",
+  "best_epoch": 12,
+  "validation_mae_cp": 118.84,
+  "network_path": "/tmp/nextgen_candidate_batch_8.nnue",
   "feature_count": 5120,
   "hidden_1": 256,
   "hidden_2": 32
