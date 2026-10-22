@@ -8,6 +8,8 @@ on:
       - feature/validated-self-improvement
     paths:
       - '.github/workflows/continuous-sf19-training.yml'
+      - 'tests/test_nnue_teacher_export.py'
+      - 'training/train_nnue_teacher.py'
   workflow_dispatch:
     inputs:
       batches:
