@@ -7,7 +7,7 @@ on:
     branches:
       - feature/strict-10plus0-audit
     paths:
-      - '.github/workflows/strict-10plus0-audit.yml'
+      - 'tools/clock_match.py'
   workflow_dispatch:
     inputs:
       games:
@@ -115,26 +115,26 @@ jobs:
           report = Path("artifacts/strict-10plus0/weakness-report.json")
           out = Path(os.environ["GITHUB_STEP_SUMMARY"])
           with out.open("a", encoding="utf-8") as f:
-              f.write("# Strict Stockfish 19 MAX audit — 10+0\\n\\n")
+              f.write("# Strict Stockfish 19 MAX audit — 10+0\n\n")
               if summary.exists():
                   s = json.loads(summary.read_text())
-                  f.write("## Match\\n\\n")
-                  f.write(f"- Result: **{s['wins']} wins, {s['draws']} draws, {s['losses']} losses**\\n")
-                  f.write(f"- Score: **{s['score_fraction']:.1%}** across {s['games']} games\\n")
-                  f.write(f"- Time control: **{s['time_control_seconds']:g}+{s['increment_seconds']:g} seconds**\\n")
-                  f.write(f"- Engine resources: {s['threads_each']} thread(s), {s['hash_mb_each']} MB hash each\\n")
-                  f.write(f"- Experience book enabled: {s['experience_book_enabled']}\\n")
-                  f.write(f"- Estimated Elo: {s['elo_estimate']} (not estimated against MAX)\\n\\n")
+                  f.write("## Match\n\n")
+                  f.write(f"- Result: **{s['wins']} wins, {s['draws']} draws, {s['losses']} losses**\n")
+                  f.write(f"- Score: **{s['score_fraction']:.1%}** across {s['games']} games\n")
+                  f.write(f"- Time control: **{s['time_control_seconds']:g}+{s['increment_seconds']:g} seconds**\n")
+                  f.write(f"- Engine resources: {s['threads_each']} thread(s), {s['hash_mb_each']} MB hash each\n")
+                  f.write(f"- Experience book enabled: {s['experience_book_enabled']}\n")
+                  f.write(f"- Estimated Elo: {s['elo_estimate']} (not estimated against MAX)\n\n")
               if report.exists():
                   r = json.loads(report.read_text())
-                  f.write("## Mistake audit\\n\\n")
-                  f.write(f"- NextGen moves scanned: {r['nextgen_moves_scanned']}\\n")
-                  f.write(f"- Apparent losses ≥{r['threshold_cp']} cp: {r['apparent_mistakes_at_or_above_threshold']}\\n")
-                  f.write(f"- Deep positions completed: {r['deep_positions_completed']}\\n\\n")
-                  f.write("| Phase | Moves | Mean cp loss | 300+ cp losses | 800+ cp losses |\\n|---|---:|---:|---:|---:|\\n")
+                  f.write("## Mistake audit\n\n")
+                  f.write(f"- NextGen moves scanned: {r['nextgen_moves_scanned']}\n")
+                  f.write(f"- Apparent losses ≥{r['threshold_cp']} cp: {r['apparent_mistakes_at_or_above_threshold']}\n")
+                  f.write(f"- Deep positions completed: {r['deep_positions_completed']}\n\n")
+                  f.write("| Phase | Moves | Mean cp loss | 300+ cp losses | 800+ cp losses |\n|---|---:|---:|---:|---:|\n")
                   for phase, row in r["summary_by_phase"].items():
-                      f.write(f"| {phase} | {row['moves']} | {row['mean_cp_loss']} | {row['cp_loss_300_plus']} | {row['cp_loss_800_plus']} |\\n")
-                  f.write("\\nSee the artifact JSON for top positions and principal variations. The audit's cp-loss estimates are diagnostic, not a rating.\\n")
+                      f.write(f"| {phase} | {row['moves']} | {row['mean_cp_loss']} | {row['cp_loss_300_plus']} | {row['cp_loss_800_plus']} |\n")
+                  f.write("\nSee the artifact JSON for top positions and principal variations. The audit's cp-loss estimates are diagnostic, not a rating.\n")
           PY
 
       - name: Upload match PGN, reports, and clock records
