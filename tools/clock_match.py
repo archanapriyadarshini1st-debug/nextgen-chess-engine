@@ -245,6 +245,7 @@ def main() -> int:
     parser.add_argument("--pgn", type=Path, default=DATA / "clock_match.pgn")
     parser.add_argument("--summary", type=Path, default=DATA / "clock_match_summary.json")
     parser.add_argument("--max-ply", type=int, default=240)
+    parser.add_argument("--opening-offset", type=int, default=0, help="rotate opening schedule for independent tournament shards")
     args = parser.parse_args()
 
     if args.games < 2 or args.games % 2:
@@ -290,7 +291,7 @@ def main() -> int:
     try:
         for index in range(args.games):
             our_white = (index % 2 == 0)
-            opening = OPENINGS[(index // 2) % len(OPENINGS)]
+            opening = OPENINGS[((index // 2) + args.opening_offset) % len(OPENINGS)]
             pair = index // 2 + 1
             try:
                 game_data = play(our, sf, our_white, opening, base, inc, args.max_ply)
