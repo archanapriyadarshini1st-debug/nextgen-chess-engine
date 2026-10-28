@@ -206,6 +206,20 @@ void test_see_exchange_sequences() {
     assert(see(quiet_promotion, promote_queen) == 800);
 }
 
+
+void test_timed_search_returns_legal_fallback() {
+    // A tiny time budget may expire before a complete iteration; the engine
+    // must still return a legal move rather than an invalid or null move.
+    Position pos;
+    pos.set_startpos();
+    Search search;
+    Limits limits;
+    limits.movetime_ms = 1;
+    const auto result = search.think(pos, limits);
+    assert(!result.best_move.is_null());
+    assert(pos.legal(result.best_move));
+}
+
 void test_search_finds_mate_in_one() {
     // White to move: Qg7# is mate. Quiescence search must not stand pat
     // while Black is in check, and must score a checked position with no
@@ -283,6 +297,7 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_timed_search_returns_legal_fallback();
     test_see_exchange_sequences();
     test_nnue_binary_layout_and_score_scale();
     test_capture_only_generation_keeps_quiet_promotions();
