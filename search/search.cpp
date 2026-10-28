@@ -495,6 +495,9 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
     for (int depth = 1; depth <= max_depth; ++depth) {
         if (time_up()) break;
         bool accepted = false;
+        // Discard a depth if the clock expires before every required root
+        // search completes. The last fully completed depth remains the result.
+        bool iteration_complete = true;
         std::int64_t window = depth >= 4 ? 50 : INF;
         while (!accepted) {
             Score alpha0 = depth >= 4 ? previous - window : -INF;
@@ -590,11 +593,17 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                     if (!pos.make_move(m)) continue;
                     Score score = -negamax(pos, depth - 1, -beta, -alpha, 1, false);
                     pos.unmake_move();
+                    // A timed-out child can return an interrupted partial
+                    // score. Never use it to select or publish this depth.
+                    if (time_up()) {
+                        iteration_complete = false;
+                        break;
+                    }
                     if (!have_move || score > local_best) { local_best = score; local_move = m; have_move = true; }
                     if (score > alpha) alpha = score;
                     if (alpha >= beta) break;
-                    if (time_up()) break;
                 }
+                if (!iteration_complete) break;
                 if (!have_move) { local_move = fallback; local_best = -MATE_SCORE; }
 
                 if (depth >= 4 && local_best <= alpha0) { previous = local_best; window *= 2; continue; }
@@ -605,6 +614,7 @@ SearchResult Search::think(Position& pos, const Limits& limits) {
                 accepted = true;
             }
         }
+        if (!iteration_complete) break;
         r.best_move = best;
         r.score = best_score;
         r.depth = depth;
