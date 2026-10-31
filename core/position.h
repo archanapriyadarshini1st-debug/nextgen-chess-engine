@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include <array>
+#include <bit>
 #include <string>
 #include <vector>
 
@@ -58,7 +59,7 @@ public:
 
     // evaluation helpers
     Bitboard pieces(Piece p) const { return piece_bb_[piece_index(p)]; }
-    int count(Piece p) const { return __builtin_popcountll(pieces(p)); }
+    int count(Piece p) const { return std::popcount(pieces(p)); }
 
 private:
     void clear();
