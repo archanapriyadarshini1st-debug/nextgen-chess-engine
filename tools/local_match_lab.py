@@ -563,7 +563,13 @@ def main() -> int:
     positions_total = read_count(POSITIONS_JSONL)
     state["teacher_positions"] = read_count(TEACHER_JSONL)
     state["missed_moves"] = read_count(MISSED_JSONL)
-    results = Counter(row.get("our_result", "unknown") for row in read_jsonl(GAMES_JSONL))
+    saved_game_rows = list(read_jsonl(GAMES_JSONL))
+    results = Counter(row.get("our_result", "unknown") for row in saved_game_rows)
+    # Alternate NextGen's color and pair openings independently per clock.
+    # Switching from 3+0 to 5+3 must not split a White/Black opening pair.
+    control_games_completed = sum(
+        1 for row in saved_game_rows if row.get("time_control") == time_control_label
+    )
     teacher_keys = teacher_done_keys()
     state.update({
         "schema": "nextgen-local-match-lab-v1",
@@ -579,6 +585,7 @@ def main() -> int:
         "nextgen_experience_book": False,
         "teacher_every_nth_nextgen_move": args.teacher_every,
         "teacher_seconds_per_analysis": args.teacher_seconds,
+        "games_in_selected_time_control": control_games_completed,
     })
     print("=" * 64)
     print("NEXTGEN LOCAL MATCH LAB")
@@ -587,6 +594,7 @@ def main() -> int:
     print(f"Completed games saved: {completed}")
     print(f"Resources: {args.threads} thread(s) and {args.hash_mb} MB Hash per engine")
     print(f"Clock: {time_control_label} (real-time UCI clock; base is minutes, increment is seconds)")
+    print(f"Games already recorded at this clock: {control_games_completed}")
     print(f"Teacher: {args.teacher_seconds:g}s per Stockfish analysis, every {args.teacher_every}th NextGen move")
     print("Stockfish: full strength; NextGen experience book: OFF")
     print("Press Stop-After-Game.bat to finish the current game and stop.")
@@ -612,8 +620,9 @@ def main() -> int:
             if args.max_games and new_games >= args.max_games:
                 break
             game_number = completed + 1
-            pair_number = (game_number - 1) // 2
-            our_white = (game_number % 2 == 1)
+            control_game_index = control_games_completed
+            pair_number = control_game_index // 2
+            our_white = (control_game_index % 2 == 0)
             opening = OPENINGS[pair_number % len(OPENINGS)]
             print(f"\nGame {game_number}: NextGen {'White' if our_white else 'Black'} | opening {opening or 'start position'}", flush=True)
             match, error = play_one(our, sf, game_number, our_white, opening,
@@ -656,6 +665,7 @@ def main() -> int:
             append_jsonl(GAMES_JSONL, summary_record)
 
             completed += 1
+            control_games_completed += 1
             positions_total += len(derived_positions)
             results[match["our_result"]] += 1
             new_games += 1
@@ -689,6 +699,7 @@ def main() -> int:
                 "increment_seconds": args.increment_seconds,
                 "time_control": time_control_label,
                 "teacher_seconds_per_analysis": args.teacher_seconds,
+                "games_in_selected_time_control": control_games_completed,
                 "elapsed_seconds_this_session": round(time.monotonic() - started, 1),
                 "last_result": match["our_result"],
             })
