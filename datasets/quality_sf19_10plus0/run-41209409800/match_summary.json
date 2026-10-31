@@ -1,0 +1,22 @@
+{
+  "tag": "quality-10plus0-depth20-41209409800",
+  "time_control_seconds": 600.0,
+  "increment_seconds": 0.0,
+  "sf": "MAX",
+  "sf_strength_capped": false,
+  "games": 12,
+  "requested_games": 12,
+  "wins": 0,
+  "draws": 0,
+  "losses": 12,
+  "discarded": 0,
+  "score_fraction": 0.0,
+  "hash_mb_each": 256,
+  "threads_each": 1,
+  "paired_colors_and_openings": true,
+  "experience_book_enabled": false,
+  "depth_limit_passed": false,
+  "elapsed_seconds": 7765.47,
+  "elo_estimate": null,
+  "rating_note": "No absolute Elo estimate emitted: Stockfish 19 MAX has no validated fixed Elo reference here."
+}
