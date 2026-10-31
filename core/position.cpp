@@ -208,7 +208,7 @@ bool Position::is_threefold() const {
 
 bool Position::is_insufficient_material() const {
     // K vs K
-    int total = __builtin_popcountll(occupancy_all());
+    int total = std::popcount(occupancy_all());
     if (total==2) return true;
     if (total==3) {
         // K+N vs K or K+B vs K
