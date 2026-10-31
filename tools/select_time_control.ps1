@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory=$true)]
     [string]$OutputFile,
-    [switch]$SelfTest
+    [switch]$SelfTest,
+    [switch]$TestCustom
 )
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -132,8 +133,32 @@ $form.Controls.Add($cancel)
 $form.CancelButton = $cancel
 
 if ($SelfTest) {
-    # Build all WinForms controls without opening a visible dialog.
-    $selection.Value = "3+0"
+    if ($TestCustom) {
+        # Exercise the custom input and Start custom button.
+        $custom.Text = "7+2"
+        $form.Add_Shown({
+            $start.PerformClick()
+        })
+        [void]$form.ShowDialog()
+        if ($selection.Value -ne "7+2") {
+            throw "Custom button click did not return the entered value."
+        }
+    } else {
+        # Exercise an actual preset button click through the WinForms event handler.
+        $testButton = @($form.Controls | Where-Object {
+            $_ -is [System.Windows.Forms.Button] -and $_.Tag -eq "5+3"
+        }) | Select-Object -First 1
+        if (-not $testButton) {
+            throw "Could not locate the 5+3 preset button."
+        }
+        $form.Add_Shown({
+            $testButton.PerformClick()
+        })
+        [void]$form.ShowDialog()
+        if ($selection.Value -ne "5+3") {
+            throw "Preset button click did not return the selected value."
+        }
+    }
 } else {
     [void]$form.ShowDialog()
 }
