@@ -189,25 +189,58 @@ def phase(board: chess.Board) -> str:
     return "middlegame"
 
 def play_one(our, sf, game_number: int, our_white: bool, opening: str,
-             think_seconds: float, max_ply: int):
+             clock_seconds: float, increment_seconds: float, max_ply: int):
     board, game, node = make_game(opening)
     our_color = chess.WHITE if our_white else chess.BLACK
+    clocks = {chess.WHITE: clock_seconds, chess.BLACK: clock_seconds}
     our_positions = []
     moves = []
+    move_times = []
     termination = "unknown"
     crash = None
+    flag_fell = None
     while not board.is_game_over(claim_draw=True) and board.ply() < max_ply:
         is_our = board.turn == our_color
         engine = our if is_our else sf
         fen_before = board.fen()
+        side_to_move = board.turn
+        clock_before = clocks[side_to_move]
         started = time.monotonic()
         try:
-            result = engine.play(board, chess.engine.Limit(time=think_seconds))
+            limit = chess.engine.Limit(
+                white_clock=max(0.001, clocks[chess.WHITE]),
+                black_clock=max(0.001, clocks[chess.BLACK]),
+                white_inc=increment_seconds,
+                black_inc=increment_seconds,
+            )
+            result = engine.play(board, limit)
         except Exception as exc:
             crash = f"{'NextGen' if is_our else 'Stockfish 19'} engine error: {exc}"
             break
         elapsed = time.monotonic() - started
         move = result.move
+        if elapsed >= clock_before:
+            clocks[side_to_move] = 0.0
+            flag_fell = side_to_move
+            termination = "time_forfeit"
+            move_times.append({
+                "ply": board.ply(),
+                "color": "white" if side_to_move else "black",
+                "engine": "NextGen" if is_our else "Stockfish 19",
+                "elapsed_seconds": round(elapsed, 4),
+                "clock_before_seconds": round(clock_before, 4),
+                "clock_after_seconds": 0.0,
+            })
+            break
+        clocks[side_to_move] = clock_before - elapsed + increment_seconds
+        move_times.append({
+            "ply": board.ply(),
+            "color": "white" if side_to_move else "black",
+            "engine": "NextGen" if is_our else "Stockfish 19",
+            "elapsed_seconds": round(elapsed, 4),
+            "clock_before_seconds": round(clock_before, 4),
+            "clock_after_seconds": round(clocks[side_to_move], 4),
+        })
         if move is None or move not in board.legal_moves:
             crash = f"{'NextGen' if is_our else 'Stockfish 19'} returned an illegal or null move."
             break
@@ -221,6 +254,7 @@ def play_one(our, sf, game_number: int, our_white: bool, opening: str,
                 "phase": phase(board),
                 "our_color": "white" if our_white else "black",
                 "think_seconds": round(elapsed, 4),
+                "clock_remaining_seconds": round(clocks[side_to_move], 4),
             })
         node = node.add_variation(move)
         board.push(move)
@@ -229,7 +263,13 @@ def play_one(our, sf, game_number: int, our_white: bool, opening: str,
     if crash:
         termination = "discarded_engine_error"
         return None, crash
-    if board.is_game_over(claim_draw=True):
+    if flag_fell is not None:
+        winner = not flag_fell
+        if board.has_insufficient_material(winner):
+            result_text = "1/2-1/2"
+        else:
+            result_text = "1-0" if winner == chess.WHITE else "0-1"
+    elif board.is_game_over(claim_draw=True):
         outcome = board.outcome(claim_draw=True)
         result_text = board.result(claim_draw=True)
         termination = outcome.termination.name if outcome else "game_over"
@@ -250,7 +290,7 @@ def play_one(our, sf, game_number: int, our_white: bool, opening: str,
     game.headers["White"] = "NextGen" if our_white else "Stockfish 19"
     game.headers["Black"] = "Stockfish 19" if our_white else "NextGen"
     game.headers["Result"] = result_text
-    game.headers["TimeControl"] = f"{think_seconds:g}s per move each"
+    game.headers["TimeControl"] = f"{clock_seconds:g}+{increment_seconds:g}"
     game.headers["Termination"] = termination
     game.headers["OpeningUCI"] = opening
     game.headers["PlyCount"] = str(board.ply())
@@ -267,6 +307,11 @@ def play_one(our, sf, game_number: int, our_white: bool, opening: str,
         "opening": opening,
         "ply": board.ply(),
         "moves": moves,
+        "move_times": move_times,
+        "clock_final_seconds": {
+            "white": round(clocks[chess.WHITE], 4),
+            "black": round(clocks[chess.BLACK], 4),
+        },
         "final_fen": board.fen(),
         "positions": our_positions,
     }, None
@@ -388,6 +433,8 @@ def label_pending_positions(sf, every_n: int, teacher_seconds: float,
                 "best_cp": int(best_cp),
                 "best": best.uci(),
                 "teacher_depth": int(info.get("depth") or 1),
+                "teacher_time_seconds": teacher_seconds,
+                "teacher_time_scope": "per_search_best_move_and_played_move_scoring",
                 "requested_depth": None,
                 "label_source": "stockfish19_local_match_lab",
                 "played": played.uci(),
@@ -421,24 +468,27 @@ def write_summary(state: dict, results: Counter) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--think-seconds", type=float, default=0.15,
-                        help="equal per-move search time for both engines")
+    parser.add_argument("--clock-seconds", type=float, default=180.0,
+                        help="starting real-time clock for each side; default 180 seconds (3 minutes)")
+    parser.add_argument("--increment-seconds", type=float, default=0.0,
+                        help="Fischer increment added after each move; default 0 for 3+0")
     parser.add_argument("--hash-mb", type=int, default=64,
                         help="Hash memory per engine; 64 MB each is a conservative starting point")
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument("--teacher-every", type=int, default=4,
                         help="teacher-label every Nth NextGen move; default 4")
-    parser.add_argument("--teacher-seconds", type=float, default=0.35,
-                        help="Stockfish analysis budget per teacher position")
+    parser.add_argument("--teacher-seconds", type=float, default=3.0,
+                        help="Stockfish analysis budget for each best-move and played-move evaluation")
     parser.add_argument("--min-cp-loss", type=int, default=50)
-    parser.add_argument("--max-ply", type=int, default=180)
+    parser.add_argument("--max-ply", type=int, default=600,
+                        help="safety cap; 600 plies is deliberately high for a 3+0 game")
     parser.add_argument("--pause-between-games", type=float, default=1.0)
     parser.add_argument("--max-games", type=int, default=0,
                         help="0 means continuous until Stop-After-Game is clicked")
     args = parser.parse_args()
 
-    if args.think_seconds <= 0 or args.hash_mb < 16 or args.threads < 1:
-        parser.error("think time must be > 0; Hash must be >= 16 MB; Threads must be >= 1")
+    if args.clock_seconds <= 0 or args.increment_seconds < 0 or args.hash_mb < 16 or args.threads < 1:
+        parser.error("clock must be > 0; increment must be >= 0; Hash must be >= 16 MB; Threads must be >= 1")
     if args.teacher_every < 1 or args.teacher_seconds <= 0 or args.max_ply < 20:
         parser.error("teacher interval/time must be positive and max-ply must be >= 20")
     if not OUR.is_file():
@@ -470,12 +520,15 @@ def main() -> int:
         "next_game_number": completed + 1,
         "completed_games": completed,
         "discarded_games": int(state.get("discarded_games", 0)),
-        "think_seconds_each": args.think_seconds,
+        "clock_seconds_each": args.clock_seconds,
+        "increment_seconds": args.increment_seconds,
+        "time_control": f"{args.clock_seconds:g}+{args.increment_seconds:g}",
         "hash_mb_each": args.hash_mb,
         "threads_each": args.threads,
         "stockfish": "Stockfish 19 MAX (UCI_LimitStrength=false)",
         "nextgen_experience_book": False,
         "teacher_every_nth_nextgen_move": args.teacher_every,
+        "teacher_seconds_per_analysis": args.teacher_seconds,
     })
     print("=" * 64)
     print("NEXTGEN LOCAL MATCH LAB")
@@ -483,7 +536,8 @@ def main() -> int:
     print(f"Stockfish: {sf_path}")
     print(f"Completed games saved: {completed}")
     print(f"Resources: {args.threads} thread(s) and {args.hash_mb} MB Hash per engine")
-    print(f"Move budget: {args.think_seconds:g}s per move for BOTH engines")
+    print(f"Clock: {args.clock_seconds:g}+{args.increment_seconds:g} per side (real-time UCI clock)")
+    print(f"Teacher: {args.teacher_seconds:g}s per Stockfish analysis, every {args.teacher_every}th NextGen move")
     print("Stockfish: full strength; NextGen experience book: OFF")
     print("Press Stop-After-Game.bat to finish the current game and stop.")
     print("=" * 64, flush=True)
@@ -513,7 +567,7 @@ def main() -> int:
             opening = OPENINGS[pair_number % len(OPENINGS)]
             print(f"\nGame {game_number}: NextGen {'White' if our_white else 'Black'} | opening {opening or 'start position'}", flush=True)
             match, error = play_one(our, sf, game_number, our_white, opening,
-                                    args.think_seconds, args.max_ply)
+                                    args.clock_seconds, args.increment_seconds, args.max_ply)
             if error:
                 discarded += 1
                 state["discarded_games"] = int(state.get("discarded_games", 0)) + 1
@@ -530,7 +584,7 @@ def main() -> int:
             game = match.pop("game")
             record = dict(match)
             record["date"] = datetime.now().strftime("%Y.%m.%d")
-            record["time_control"] = f"{args.think_seconds:g}s per move each"
+            record["time_control"] = f"{args.clock_seconds:g}+{args.increment_seconds:g}"
             # One atomic JSON file is the source of truth for each completed game.
             # The combined exports are appended only after the canonical record exists.
             # If power is lost mid-export, startup rebuilds them from the per-game records.
@@ -577,6 +631,10 @@ def main() -> int:
                 "positions": positions_total,
                 "teacher_positions": state.get("teacher_positions", 0),
                 "missed_moves": state.get("missed_moves", 0),
+                "clock_seconds_each": args.clock_seconds,
+                "increment_seconds": args.increment_seconds,
+                "time_control": f"{args.clock_seconds:g}+{args.increment_seconds:g}",
+                "teacher_seconds_per_analysis": args.teacher_seconds,
                 "elapsed_seconds_this_session": round(time.monotonic() - started, 1),
                 "last_result": match["our_result"],
             })
