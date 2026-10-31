@@ -28,6 +28,13 @@ jobs:
         run: cmake -S . -B build -A x64 -DBUILD_TESTS=OFF
       - name: Build NextGen engine
         run: cmake --build build --config Release --target chess_engine
+      - name: Publish Windows engine build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-chess-engine-win-x64
+          path: build/Release/chess_engine.exe
+          if-no-files-found: error
+          retention-days: 30
       - name: Compile native messaging host
         shell: pwsh
         run: |
