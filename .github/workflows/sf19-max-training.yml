@@ -1,13 +1,20 @@
 name: Stockfish 19 MAX training batch
 
 on:
+  # Push to this experiment branch launches the 1,000-game hosted batch.
+  # The path filter prevents later data/report commits from starting another run.
+  push:
+    branches:
+      - feature/nextgen-memory-extension-2026-10-31
+    paths:
+      - '.github/workflows/sf19-max-training.yml'
   workflow_dispatch:
     inputs:
       games:
         description: "Number of teacher games to play"
         type: choice
         required: true
-        default: "100"
+        default: "1000"
         options:
           - "100"
           - "250"
@@ -16,6 +23,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: nextgen-sf19-max-training-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   train:
@@ -68,7 +79,7 @@ jobs:
       - name: Play games and label missed moves with Stockfish 19
         id: collect_games
         env:
-          GAMES: ${{ inputs.games || '100' }}
+          GAMES: ${{ inputs.games || '1000' }}
         run: |
           python tools/sf19_max_train.py train \
             --games "$GAMES" \
@@ -183,7 +194,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nextgen-sf19-training-${{ inputs.games }}-games
+          name: nextgen-sf19-training-${{ inputs.games || '1000' }}-games
           if-no-files-found: warn
           retention-days: 30
           path: |
