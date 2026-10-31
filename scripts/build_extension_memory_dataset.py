@@ -41,7 +41,7 @@ def main() -> None:
                     game = chess.pgn.read_game(stream)
                 except Exception:
                     malformed += 1
-                    continue
+                    break
                 if game is None:
                     break
                 games_read += 1
@@ -74,7 +74,7 @@ def main() -> None:
                         "fen": fen,
                         "uci_move": None,
                         "san_move": None,
-                        "ply": board.fullmove_number * 2 - (0 if board.turn else 1),
+                        "ply": board.fullmove_number * 2 - (2 if board.turn else 1),
                         "result": headers.get("Result", "*"),
                         "white": headers.get("White", "?"),
                         "black": headers.get("Black", "?"),
