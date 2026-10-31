@@ -89,7 +89,7 @@ Piece promotion_piece(Color side, std::uint32_t promo) {
 
 } // anonymous
 
-void generate_moves(Position& pos, MoveList& list, bool captures_only) {
+void generate_moves(Position& pos, MoveList& list, bool captures_only, bool include_quiet_checks) {
     MoveList pseudo;
     const auto& b = pos.board();
     Color us = pos.side_to_move();
@@ -196,7 +196,16 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only) {
     for (int i = 0; i < pseudo.size; ++i) {
         Move m = pseudo.moves[i];
         if (pos.make_move(m)) {
-            if (!pos.in_check(opposite(pos.side_to_move()))) list.push(m);
+            const bool legal = !pos.in_check(opposite(pos.side_to_move()));
+            const bool capture_or_promotion =
+                (m.flags() & (FLAG_CAPTURE | FLAG_PROMOTION)) != 0;
+            // Quiescence can request quiet checks as well as captures. Detect
+            // checks after making the move so discovered checks are included.
+            const bool gives_check = pos.in_check(pos.side_to_move());
+            if (legal && (!captures_only || capture_or_promotion ||
+                          (include_quiet_checks && gives_check))) {
+                list.push(m);
+            }
             pos.unmake_move();
         }
     }

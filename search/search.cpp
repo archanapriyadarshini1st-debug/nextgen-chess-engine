@@ -161,7 +161,7 @@ void Search::order_moves(Position& pos, MoveList& moves, Move tt_move, int ply) 
     }
 }
 
-Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
+Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply, int quiet_check_budget) {
     seldepth_ = std::max(seldepth_, ply);
     ++nodes_;
     if (time_up()) return evaluate(pos);
@@ -193,7 +193,10 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
     }
 
     MoveList moves;
-    generate_moves(pos, moves, !in_check);
+    // Search a bounded number of non-capturing checks beyond the horizon.
+    // This catches quiet mating threats without allowing an unbounded chain
+    // of checking moves to explode quiescence.
+    generate_moves(pos, moves, !in_check, !in_check && quiet_check_budget > 0);
     order_moves(pos, moves, tt_move, ply);
 
     // Move generation returns only legal moves. No legal evasion means mate.
@@ -219,7 +222,13 @@ Score Search::qsearch(Position& pos, Score alpha, Score beta, int ply) {
             pos.unmake_move();
             continue;
         }
-        Score score = -qsearch(pos, -beta, -alpha, ply + 1);
+        const bool gives_check = pos.in_check(pos.side_to_move());
+        const bool quiet_check = gives_check &&
+            (m.flags() & (FLAG_CAPTURE | FLAG_PROMOTION)) == 0;
+        const int next_quiet_check_budget =
+            quiet_check_budget - (quiet_check ? 1 : 0);
+        Score score = -qsearch(pos, -beta, -alpha, ply + 1,
+                               next_quiet_check_budget);
         pos.unmake_move();
         if (score >= beta) return beta;
         if (score > alpha) alpha = score;
@@ -232,7 +241,7 @@ Score Search::negamax(Position& pos, int depth, Score alpha, Score beta, int ply
     seldepth_ = std::max(seldepth_, ply);
     ++nodes_;
     if (time_up()) return evaluate(pos);
-    if (depth <= 0) return qsearch(pos, alpha, beta, ply);
+    if (depth <= 0) return qsearch(pos, alpha, beta, ply, 2);
     if (ply >= MAX_PLY - 1) return evaluate(pos);
     if (pos.is_draw(ply)) return 0;
 

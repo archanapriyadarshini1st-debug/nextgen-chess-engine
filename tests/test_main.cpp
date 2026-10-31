@@ -241,6 +241,108 @@ void test_search_finds_mate_in_one() {
     assert(replies.size == 0);
 }
 
+bool position_has_mate_in_one(Position& pos) {
+    MoveList moves;
+    generate_moves(pos, moves, false);
+    for (int i = 0; i < moves.size; ++i) {
+        if (!pos.make_move(moves.moves[i])) continue;
+        bool mate = pos.in_check(pos.side_to_move());
+        if (mate) {
+            MoveList replies;
+            generate_moves(pos, replies, false);
+            mate = replies.size == 0;
+        }
+        pos.unmake_move();
+        if (mate) return true;
+    }
+    return false;
+}
+
+bool position_has_forced_mate_in_two(Position& pos) {
+    MoveList checking_moves;
+    generate_moves(pos, checking_moves, false);
+    for (int i = 0; i < checking_moves.size; ++i) {
+        const Move check = checking_moves.moves[i];
+        if (!pos.make_move(check)) continue;
+        bool forced = pos.in_check(pos.side_to_move());
+        MoveList evasions;
+        if (forced) {
+            generate_moves(pos, evasions, false);
+            forced = evasions.size > 0;
+        }
+        for (int j = 0; forced && j < evasions.size; ++j) {
+            if (!pos.make_move(evasions.moves[j])) continue;
+            const bool mate_next = position_has_mate_in_one(pos);
+            pos.unmake_move();
+            if (!mate_next) forced = false;
+        }
+        pos.unmake_move();
+        if (forced) return true;
+    }
+    return false;
+}
+
+void test_quiet_check_generation_for_quiescence() {
+    Position pos;
+    pos.set_fen("7k/8/5K2/6Q1/8/8/8/8 w - - 0 1");
+
+    MoveList captures_only;
+    generate_moves(pos, captures_only, true, false);
+    const int queen_g5 = square_of(6, 4);
+    const int queen_g7 = square_of(6, 6);
+    for (int i = 0; i < captures_only.size; ++i) {
+        assert(!(captures_only.moves[i].from() == queen_g5 &&
+                 captures_only.moves[i].to() == queen_g7));
+    }
+
+    MoveList tactical;
+    generate_moves(pos, tactical, true, true);
+    bool found_mating_check = false;
+    for (int i = 0; i < tactical.size; ++i) {
+        const Move m = tactical.moves[i];
+        if (m.from() == queen_g5 && m.to() == queen_g7) {
+            found_mating_check = true;
+            assert(pos.make_move(m));
+            assert(pos.in_check(pos.side_to_move()));
+            MoveList replies;
+            generate_moves(pos, replies, false);
+            assert(replies.size == 0);
+            pos.unmake_move();
+        }
+    }
+    assert(found_mating_check);
+}
+
+void test_search_avoids_recorded_forced_mates() {
+    // Exact pre-move positions from the 100-game Stockfish 19 MAX audits.
+    // Four blunders allowed mate in one; two allowed a forcing check/mate
+    // sequence in two. At depth one, quiescence must still see these threats.
+    const char* fens[] = {
+        "r1bqkb1r/3p3p/p1p3P1/4NQ2/1p6/1PN5/1PPP1PPP/R1B1K2R b KQkq - 0 13", // A G20
+        "r1bq1k1r/1p2b1pp/5n2/pBPpp1NQ/P2P4/8/1P4PP/R1B2RK1 b - - 1 17",     // B G10
+        "1rb2rk1/1pp2p2/p3p1nR/4P3/3P4/q1PQ1N2/P1B2PP1/R3K3 b Q - 0 18",     // B G32
+        "2k3rr/1bqpb3/pp6/2p1Pp2/3n4/PP2QNN1/1BPP1P2/1R3RK1 w - - 2 23",     // B G7
+        "r5nr/ppq1kppp/3bp3/3pN3/Q2P4/2N5/PP3PPP/R1B1K2R b KQ - 7 14",      // A G40
+        "rnbqkb1r/ppp1p1pp/5p2/6N1/2BP4/2P1PQ2/P4PPP/R1B1K2R b KQkq - 0 9"  // B G48
+    };
+
+    for (const char* fen : fens) {
+        Position pos;
+        pos.set_fen(fen);
+        Search search;
+        Limits limits;
+        limits.depth = 1;
+        const SearchResult result = search.think(pos, limits);
+        assert(!result.best_move.is_null());
+        assert(pos.legal(result.best_move));
+
+        Position after = pos;
+        assert(after.make_move(result.best_move));
+        assert(!position_has_mate_in_one(after));
+        assert(!position_has_forced_mate_in_two(after));
+    }
+}
+
 void test_experience_book_preserves_castling_flags() {
     const std::string fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
     Position pos;
@@ -297,6 +399,8 @@ int main() {
     test_threefold();
     test_kiwipete_perft();
     test_search_finds_mate_in_one();
+    test_quiet_check_generation_for_quiescence();
+    test_search_avoids_recorded_forced_mates();
     test_timed_search_returns_legal_fallback();
     test_see_exchange_sequences();
     test_nnue_binary_layout_and_score_scale();

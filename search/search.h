@@ -36,7 +36,7 @@ public:
 
 private:
     Score negamax(Position& pos, int depth, Score alpha, Score beta, int ply, bool cutNode);
-    Score qsearch(Position& pos, Score alpha, Score beta, int ply);
+    Score qsearch(Position& pos, Score alpha, Score beta, int ply, int quiet_check_budget);
     void order_moves(Position& pos, MoveList& moves, Move tt_move, int ply) const;
     int score_move(const Position& pos, Move m, Move tt_move, int ply) const;
     std::vector<Move> extract_pv(Position pos, int depth) const;
