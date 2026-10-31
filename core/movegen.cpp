@@ -202,7 +202,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
             // Quiescence can request quiet checks as well as captures. Detect
             // checks after making the move so discovered checks are included.
             const bool gives_check = pos.in_check(pos.side_to_move());
-            if (legal && ((!captures_only || include_quiet_checks) || capture_or_promotion ||
+            if (legal && (!captures_only || capture_or_promotion ||
                           (include_quiet_checks && gives_check))) {
                 list.push(m);
             }
