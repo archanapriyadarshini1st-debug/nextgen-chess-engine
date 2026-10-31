@@ -232,6 +232,12 @@ void test_search_finds_mate_in_one() {
     limits.depth = 1;
     const auto result = search.think(pos, limits);
 
+    if (result.score < MATE_SCORE - 2) {
+        std::cerr << "mate-in-one diagnostic score=" << result.score
+                  << " target=" << (MATE_SCORE - 2)
+                  << " move=" << result.best_move.from() << "->"
+                  << result.best_move.to() << "\\n";
+    }
     assert(!result.best_move.is_null());
     assert(result.score >= MATE_SCORE - 2);
     assert(pos.make_move(result.best_move));
