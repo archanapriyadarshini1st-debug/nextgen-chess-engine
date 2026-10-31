@@ -113,7 +113,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
                 // searched. Ordinary quiet pawn pushes remain excluded.
                 if (r == promo_rank) {
                     add_promos(pseudo, from, to, 0, false);
-                } else if (!captures_only) {
+                } else if ((!captures_only || include_quiet_checks)) {
                     pseudo.push(Move::make(from, to));
                     if (r == start_rank) {
                         int jump_r = r + 2 * dir;
@@ -142,7 +142,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
                 int nf = f + x[0], nr = r + x[1];
                 if (!on(nf, nr)) continue;
                 int to = sq(nf, nr);
-                if (b[to] == Piece::None) { if (!captures_only) pseudo.push(Move::make(from, to)); }
+                if (b[to] == Piece::None) { if ((!captures_only || include_quiet_checks)) pseudo.push(Move::make(from, to)); }
                 else if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
             }
         } else if (p == mover_bishop(us) || p == mover_rook(us) || p == mover_queen(us)) {
@@ -160,7 +160,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
                 while (on(nf, nr)) {
                     int to = sq(nf, nr);
                     if (b[to] == Piece::None) {
-                        if (!captures_only) pseudo.push(Move::make(from, to));
+                        if ((!captures_only || include_quiet_checks)) pseudo.push(Move::make(from, to));
                     } else {
                         if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
                         break;
@@ -174,10 +174,10 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
                 int nf = f + x[0], nr = r + x[1];
                 if (!on(nf, nr)) continue;
                 int to = sq(nf, nr);
-                if (b[to] == Piece::None) { if (!captures_only) pseudo.push(Move::make(from, to)); }
+                if (b[to] == Piece::None) { if ((!captures_only || include_quiet_checks)) pseudo.push(Move::make(from, to)); }
                 else if (is_enemy(b[to], us)) pseudo.push(Move::make(from, to, FLAG_CAPTURE));
             }
-            if (!captures_only && !pos.in_check(us)) {
+            if ((!captures_only || include_quiet_checks) && !pos.in_check(us)) {
                 if (us == Color::White && from == 4) {
                     if ((pos.castling_rights() & WHITE_KINGSIDE) && b[5] == Piece::None && b[6] == Piece::None && !pos.square_attacked(5, them) && !pos.square_attacked(6, them)) pseudo.push(Move::make(4, 6, FLAG_KING_CASTLE));
                     if ((pos.castling_rights() & WHITE_QUEENSIDE) && b[3] == Piece::None && b[2] == Piece::None && b[1] == Piece::None && !pos.square_attacked(3, them) && !pos.square_attacked(2, them)) pseudo.push(Move::make(4, 2, FLAG_QUEEN_CASTLE));
@@ -202,7 +202,7 @@ void generate_moves(Position& pos, MoveList& list, bool captures_only, bool incl
             // Quiescence can request quiet checks as well as captures. Detect
             // checks after making the move so discovered checks are included.
             const bool gives_check = pos.in_check(pos.side_to_move());
-            if (legal && (!captures_only || capture_or_promotion ||
+            if (legal && ((!captures_only || include_quiet_checks) || capture_or_promotion ||
                           (include_quiet_checks && gives_check))) {
                 list.push(m);
             }
