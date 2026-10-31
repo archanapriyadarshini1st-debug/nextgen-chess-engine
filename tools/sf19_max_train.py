@@ -550,6 +550,7 @@ def cmd_train(args) -> None:
     depth = args.analyse_depth
     print(f"\n=== Train vs Stockfish 19 MAX (UCI_LimitStrength=false) ===")
     print(f"games={n_games}  NextGen {our_ms}ms  SF19 {sf_ms}ms  analyse depth {depth}")
+    print(f"experience book: {'ENABLED' if args.use_experience_book else 'DISABLED'}")
     print(f"missed moves -> {MISSED}")
     print(f"experience book -> {EXPERIENCE}")
 
@@ -566,7 +567,7 @@ def cmd_train(args) -> None:
         time.sleep(0.2)
         # Training intentionally uses the existing experience book; Elo
         # measurements and candidate validation explicitly turn it off.
-        our = start_engine(OUR, hash_mb=32, threads=1, own_book=True)
+        our = start_engine(OUR, hash_mb=32, threads=1, own_book=args.use_experience_book)
         sf = start_engine(SF, hash_mb=16, threads=1, limit_elo=None)
         return our, sf
 
@@ -733,10 +734,11 @@ def main():
     ap.add_argument("mode", choices=["elo", "train", "both"], default="both", nargs="?")
     ap.add_argument("--games", type=int, default=80, help="games vs SF19 MAX")
     ap.add_argument("--games-per-level", type=int, default=10)
-    ap.add_argument("--our-ms", type=int, default=120)
-    ap.add_argument("--sf-ms", type=int, default=50)
-    ap.add_argument("--analyse-depth", type=int, default=10)
-    ap.add_argument("--min-cp-loss", type=int, default=50)
+    ap.add_argument("--our-ms", type=int, default=1000)
+    ap.add_argument("--sf-ms", type=int, default=1000)
+    ap.add_argument("--analyse-depth", type=int, default=20)
+    ap.add_argument("--min-cp-loss", type=int, default=100)
+    ap.add_argument("--use-experience-book", action="store_true", help="reuse accumulated experience hints; disabled by default")
     ap.add_argument("--analyse-all", action="store_true")
     args = ap.parse_args()
 

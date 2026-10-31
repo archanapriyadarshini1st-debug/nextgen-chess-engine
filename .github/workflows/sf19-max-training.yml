@@ -1,7 +1,7 @@
 name: Stockfish 19 MAX training batch
 
 on:
-  # Push to this experiment branch launches the 1,000-game hosted batch.
+  # Push to this experiment branch launches the quality-controlled 10+0 batch.
   # The path filter prevents later data/report commits from starting another run.
   push:
     branches:
@@ -11,15 +11,14 @@ on:
   workflow_dispatch:
     inputs:
       games:
-        description: "Number of teacher games to play"
+        description: "Number of true 10+0 quality games"
         type: choice
         required: true
-        default: "1000"
+        default: "12"
         options:
-          - "100"
-          - "250"
-          - "500"
-          - "1000"
+          - "8"
+          - "10"
+          - "12"
 
 permissions:
   contents: write
@@ -76,44 +75,50 @@ jobs:
           quit
           EOF
 
-      - name: Play games and label missed moves with Stockfish 19
+      - name: Play paired-color games at a genuine 10+0 time control
         id: collect_games
         env:
-          GAMES: ${{ inputs.games || '1000' }}
+          GAMES: ${{ inputs.games || '12' }}
         run: |
-          python tools/sf19_max_train.py train \
+          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
+          mkdir -p "$QUALITY_DIR"
+          python tools/clock_match.py \
             --games "$GAMES" \
-            --our-ms 120 \
-            --sf-ms 120 \
-            --analyse-depth 8 \
-            --min-cp-loss 50
+            --tc 600+0 \
+            --sf-elo 0 \
+            --tag "quality-10plus0-depth20-${GITHUB_RUN_ID}" \
+            --hash-mb 256 \
+            --jsonl "$QUALITY_DIR/games.jsonl" \
+            --pgn "$QUALITY_DIR/games.pgn" \
+            --summary "$QUALITY_DIR/match_summary.json"
 
-      - name: Build broad and deep Stockfish teacher labels
+      - name: Build depth-20/24/28 Stockfish teacher labels
         id: label_teacher
         run: |
+          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
+          touch "$QUALITY_DIR/missed_positions.jsonl"
           python tools/label_teacher_positions.py \
-            --pgn datasets/games_vs_sf19.pgn \
-            --missed datasets/missed_best_moves.jsonl \
+            --pgn "$QUALITY_DIR/games.pgn" \
+            --missed "$QUALITY_DIR/missed_positions.jsonl" \
             --stockfish /tmp/sf19/stockfish19 \
-            --out datasets/teacher_eval_positions.jsonl \
-            --sample-every-plies 8 \
-            --max-positions 1200 \
-            --depth 12 \
-            --critical-count 100 \
-            --critical-depth 20 \
-            --elite-count 8 \
+            --out "$QUALITY_DIR/teacher_eval_positions.jsonl" \
+            --sample-every-plies 3 \
+            --max-positions 240 \
+            --depth 20 \
+            --critical-count 48 \
+            --critical-depth 24 \
+            --elite-count 12 \
             --elite-depth 28 \
-            --bulk-time-limit 2 \
-            --critical-time-limit 8 \
-            --elite-time-limit 20 \
-            --seed 19019
+            --bulk-time-limit 5 \
+            --critical-time-limit 12 \
+            --elite-time-limit 25 \
+            --seed 20261031
 
       - name: Train candidate NNUE from balanced teacher labels
         id: train_nnue
         run: |
           python training/train_nnue_teacher.py \
-            --dataset datasets/teacher_eval_positions.jsonl \
-            --dataset datasets/missed_best_moves.jsonl \
+            --dataset datasets/quality_sf19_10plus0/teacher_eval_positions.jsonl \
             --out /tmp/nextgen_candidate.pt \
             --report /tmp/nextgen_candidate_training_report.json \
             --epochs 24 \
@@ -122,8 +127,9 @@ jobs:
             --threads 2 \
             --cpu
           test -s /tmp/nextgen_candidate.nnue
-          cp /tmp/nextgen_candidate.nnue networks/candidate.nnue
-          cp /tmp/nextgen_candidate_training_report.json networks/nnue_training_report.json
+          mkdir -p networks/candidates
+          cp /tmp/nextgen_candidate.nnue "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
+          cp /tmp/nextgen_candidate_training_report.json "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}-training-report.json"
 
       - name: Smoke-test candidate network
         id: smoke
@@ -134,59 +140,42 @@ jobs:
           grep -F 'NNUEFile loaded /tmp/nextgen_candidate.nnue' /tmp/nextgen-nnue-smoke.txt
           grep -E '^bestmove [a-h][1-8][a-h][1-8]' /tmp/nextgen-nnue-smoke.txt
 
-      - name: Tune blend and validate on held-out games
-        id: validate
-        continue-on-error: true
+      - name: Keep candidate isolated pending independent 10+0 validation
+        id: hold_candidate
         run: |
-          python tools/validate_nnue_candidate.py \
-            --candidate /tmp/nextgen_candidate.nnue \
-            --blend-candidates 15,30,45,70 \
-            --tune-games 16 \
-            --games 40 \
-            --move-time 0.15 \
-            --min-score 0.55 \
-            --report networks/candidate_validation.json
-
-      - name: Promote only a passing candidate
-        if: steps.validate.outcome == 'success'
-        run: |
-          cp /tmp/nextgen_candidate.nnue networks/nnue.nnue
-          test -s networks/nnue.nnue
-          BLEND="$(python -c "import json; print(json.load(open('networks/candidate_validation.json'))['tuned_blend_percent'])")"
-          printf '%s\n' "$BLEND" > networks/nnue_blend.txt
-          echo "Promoted NNUE with tuned blend ${BLEND}%."
+          CANDIDATE="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
+          test -s "$CANDIDATE"
+          echo "Candidate retained separately; production networks/nnue.nnue is unchanged."
+          echo "A short movetime gate is not accepted as evidence for promotion."
 
       - name: Summarize candidate result
         if: always()
         run: |
-          if [ "${{ steps.validate.outcome }}" = "success" ]; then
-            echo "## NNUE candidate: PASS" >> "$GITHUB_STEP_SUMMARY"
-            echo "The tuned candidate passed its held-out 40-game gate and was promoted." >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue" ]; then
+            echo "## Stockfish teacher candidate: trained, not promoted" >> "$GITHUB_STEP_SUMMARY"
+            echo "Match data uses paired-color 10+0 games against uncapped Stockfish 19 MAX." >> "$GITHUB_STEP_SUMMARY"
+            echo "Teacher targets request depths 20, 24 and 28 with explicit wall-time caps; actual depths are recorded." >> "$GITHUB_STEP_SUMMARY"
+            echo "The candidate is kept separate. Production NNUE promotion requires a separate independent 10+0 validation." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "## NNUE candidate: REJECTED (kept current evaluator)" >> "$GITHUB_STEP_SUMMARY"
-            echo "The data collection and training are preserved; no candidate network was promoted." >> "$GITHUB_STEP_SUMMARY"
+            echo "## Stockfish teacher candidate: not produced" >> "$GITHUB_STEP_SUMMARY"
+            echo "The run did not produce a candidate network. Existing production NNUE remains unchanged." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Persist teacher data and reports even if candidate is rejected
+      - name: Persist quality match data, teacher labels and candidate without promotion
         if: always() && steps.collect_games.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for file in \
-            datasets/games_vs_sf19.pgn datasets/games_vs_sf19.jsonl \
-            datasets/missed_best_moves.jsonl datasets/experience_book.txt \
-            datasets/weaknesses.json datasets/train_status.json \
-            datasets/teacher_eval_positions.jsonl \
-            networks/nnue_training_report.json networks/candidate_validation.json; do
-            if [ -f "$file" ]; then git add "$file"; fi
-          done
-          if [ "${{ steps.validate.outcome }}" = "success" ]; then
-            git add -f networks/nnue.nnue networks/nnue_blend.txt
-          fi
+          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
+          if [ -d "$QUALITY_DIR" ]; then git add "$QUALITY_DIR"; fi
+          CANDIDATE="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
+          REPORT="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}-training-report.json"
+          if [ -f "$REPORT" ]; then git add "$REPORT"; fi
+          if [ -f "$CANDIDATE" ]; then git add -f "$CANDIDATE"; fi
           if git diff --cached --quiet; then
-            echo "No teacher data or report changes to commit."
+            echo "No quality data or candidate changes to commit."
           else
-            git commit -m "train: preserve Stockfish teacher data and validation results"
+            git commit -m "train: add isolated 10+0 Stockfish teacher dataset"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
@@ -194,17 +183,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nextgen-sf19-training-${{ inputs.games || '1000' }}-games
+          name: nextgen-sf19-quality-10plus0-${{ inputs.games || '12' }}-games
           if-no-files-found: warn
           retention-days: 30
           path: |
-            datasets/games_vs_sf19.pgn
-            datasets/games_vs_sf19.jsonl
-            datasets/missed_best_moves.jsonl
-            datasets/teacher_eval_positions.jsonl
-            datasets/experience_book.txt
-            datasets/weaknesses.json
-            datasets/train_status.json
-            networks/candidate.nnue
-            networks/nnue_training_report.json
-            networks/candidate_validation.json
+            datasets/quality_sf19_10plus0/${{ github.run_id }}/
+            networks/candidates/nextgen-sf19-${{ github.run_id }}.nnue
+            networks/candidates/nextgen-sf19-${{ github.run_id }}-training-report.json

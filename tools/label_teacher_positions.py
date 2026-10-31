@@ -144,12 +144,20 @@ def main() -> None:
         args.pgn, args.sample_every_plies, args.max_positions, args.seed
     )
     critical = critical_positions(args.missed, args.critical_count)
+    critical_source = "critical_mistake"
+    if not critical and args.critical_count > 0:
+        # A clean clock-match dataset has no precomputed mistake labels. Pick a
+        # deterministic subset of its broad positions for deeper teacher passes.
+        rng = random.Random(args.seed + 24)
+        count = min(args.critical_count, len(broad))
+        critical = [(fen, 0) for fen in rng.sample(broad, count)]
+        critical_source = "deep_broad_sample"
     elite = critical[: min(args.elite_count, len(critical))]
 
     tasks: list[tuple[str, int, str]] = []
     tasks.extend((fen, args.depth, "broad_pgn") for fen in broad)
-    tasks.extend((fen, args.critical_depth, "critical_mistake") for fen, _ in critical)
-    tasks.extend((fen, args.elite_depth, "elite_critical") for fen, _ in elite)
+    tasks.extend((fen, args.critical_depth, critical_source) for fen, _ in critical)
+    tasks.extend((fen, args.elite_depth, "elite_" + critical_source) for fen, _ in elite)
     if not tasks:
         raise SystemExit("No positions were selected from PGN or missed-move data.")
 

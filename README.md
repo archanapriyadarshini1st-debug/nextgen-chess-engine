@@ -40,9 +40,9 @@ printf 'uci\nisready\nposition startpos\ngo depth 8\nquit\n' | ./bin/chess_engin
 
 ## Stockfish-supervised NNUE (experimental)
 
-The manual GitHub Actions workflow `.github/workflows/sf19-max-training.yml` can run batches of 100, 250, 500, or 1,000 games against uncapped Stockfish 19. It uses equal 120 ms per move for both engines for the fast teacher-game batch, then analyses missed positions at Stockfish depth 8.
+The GitHub Actions quality workflow `.github/workflows/sf19-max-training.yml` runs paired-color games at a genuine 10+0 clock against uncapped Stockfish 19 MAX (default 12 games). It does not use the experience book. PGN positions are re-labelled by Stockfish at requested depths 20, 24 and 28, each with a wall-time cap; actual achieved depth is stored. The resulting NNUE is kept as `networks/candidates/nextgen-sf19-RUN_ID.nnue` and is never promoted automatically from a short-time test. A separate independent 10+0 validation is required before replacing the production network.
 
-A batch can also train a compact NNUE from `datasets/missed_best_moves.jsonl`:
+The older per-move collector remains available for auxiliary experiments, but its mistake-only file is not used by the quality workflow. Prefer the broad depth-20/24/28 teacher dataset above for NNUE training. To run the legacy collector manually:
 
 ```bash
 python -m pip install python-chess numpy torch
@@ -55,22 +55,22 @@ python training/train_nnue_teacher.py \
 
 The trainer converts Stockfish labels to White's score perspective, holds out positions for validation, reports validation MAE/RMSE, and exports a binary matching the C++ feature map and fixed-point scales. CI includes a synthetic-network test for binary layout and score sign; the workflow also smoke-tests UCI loading before persisting the model and teacher data. The shipped old chunks under `networks/chunks/` are legacy and **must not be reassembled over the new compact model**.
 
-This is an experimental evaluation model, not an Elo guarantee. The first 100-game baseline against Stockfish 19 MAX ended 0–100–0 (NextGen had 120 ms per move; Stockfish had 60 ms). That result is not a balanced tournament rating; it motivates further search/evaluation work. Strength must be measured separately with equal time controls and repeatable matches.
+This is an experimental evaluation model, not an Elo guarantee. The first fast baseline against Stockfish 19 MAX used unequal 120 ms vs 60 ms per move. It is a historical result only, not a balanced tournament rating or a high-quality teacher dataset. Strength must be measured separately with equal time controls and repeatable matches.
 
 ## Train vs Stockfish 19 MAX (the teacher)
 
 ```bash
 # official SF19 binary somewhere on PATH or /tmp/sf19/stockfish19
-python3 tools/sf19_max_train.py train --games 200 --our-ms 80 --sf-ms 40 --analyse-depth 8
+python3 tools/sf19_max_train.py train --games 100 --our-ms 1000 --sf-ms 1000 --analyse-depth 20
 ```
 
 This plays **uncapped** Stockfish 19, and after each loss writes:
 
 - `datasets/missed_best_moves.jsonl` — FEN, our move, SF19 best, cp loss, why
-- `datasets/experience_book.txt` — engine-readable best moves (auto-loaded)
+- `datasets/experience_book.txt` — engine-readable best moves (only loaded when `--use-experience-book` is explicitly passed)
 - `datasets/games_vs_sf19.pgn`
 
-Clock matches (not for training labels): `python3 tools/clock_match.py --games 40 --tc 10+0.1 --sf-elo 0` (`0` = SF19 max).
+Clock-controlled matches: `python3 tools/clock_match.py --games 8 --tc 600+0 --sf-elo 0` (`600+0` = true 10+0; `0` = SF19 max). The GitHub quality workflow uses this clock runner before teacher labelling.
 
 ## UCI
 
