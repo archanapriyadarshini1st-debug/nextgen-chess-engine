@@ -30,6 +30,7 @@ GAMES_JSONL = DATA / "games.jsonl"
 POSITIONS_JSONL = DATA / "positions.jsonl"
 TEACHER_JSONL = DATA / "teacher_positions.jsonl"
 MISSED_JSONL = DATA / "missed_best_moves.jsonl"
+LEGACY_TEACHER_JSONL = DATA / "legacy" / "teacher_positions_fast_350ms_legacy.jsonl"
 PGN_PATH = DATA / "games.pgn"
 STATE_PATH = REPORTS / "session_state.json"
 SUMMARY_PATH = REPORTS / "session_summary.json"
@@ -385,9 +386,13 @@ def refresh_exports_from_records() -> None:
     os.replace(pgn_tmp, PGN_PATH)
 
 def teacher_done_keys() -> set[str]:
+    # Legacy fast labels are archived and excluded from current training, but
+    # their IDs remain marked complete so startup does not silently relabel
+    # hundreds of historic fast-game positions.
     done = set()
-    for row in read_jsonl(TEACHER_JSONL):
-        done.add(str(row.get("position_id", "")))
+    for source in (TEACHER_JSONL, LEGACY_TEACHER_JSONL):
+        for row in read_jsonl(source):
+            done.add(str(row.get("position_id", "")))
     return done
 
 def label_pending_positions(sf, every_n: int, teacher_seconds: float,
@@ -460,8 +465,17 @@ def label_pending_positions(sf, every_n: int, teacher_seconds: float,
     state["missed_moves"] = int(state.get("missed_moves", 0)) + missed_added
     return added
 
+def results_by_time_control() -> dict:
+    grouped = {}
+    for row in read_jsonl(GAMES_JSONL):
+        control = str(row.get("time_control", "unknown"))
+        result = str(row.get("our_result", "unknown"))
+        grouped.setdefault(control, Counter())[result] += 1
+    return {control: dict(counts) for control, counts in grouped.items()}
+
 def write_summary(state: dict, results: Counter) -> None:
     state["results"] = dict(results)
+    state["results_by_time_control"] = results_by_time_control()
     state["updated_utc"] = now()
     atomic_json(STATE_PATH, state)
     atomic_json(SUMMARY_PATH, state)
