@@ -390,6 +390,7 @@ def refresh_exports_from_records() -> None:
             games_out.write(json.dumps(summary, ensure_ascii=False) + "\n")
             for position in row.get("positions", []):
                 derived = dict(position)
+                derived["time_control"] = derived.get("time_control", row.get("time_control", "unknown"))
                 derived["our_result"] = row.get("our_result")
                 derived["result"] = row.get("result")
                 positions_out.write(json.dumps(derived, ensure_ascii=False) + "\n")
@@ -465,6 +466,7 @@ def label_pending_positions(sf, every_n: int, teacher_seconds: float,
                 "played_cp": int(played_cp),
                 "cp_loss": cp_loss,
                 "phase": row.get("phase"),
+                "time_control": row.get("time_control", "unknown"),
                 "our_result": row.get("our_result"),
                 "timestamp_utc": now(),
             }
@@ -634,6 +636,8 @@ def main() -> int:
             record["date"] = datetime.now().strftime("%Y.%m.%d")
             record["time_control"] = time_control_label
             record["time_control_pgn"] = f"{args.clock_seconds:g}+{args.increment_seconds:g}"
+            for position in record["positions"]:
+                position["time_control"] = time_control_label
             # One atomic JSON file is the source of truth for each completed game.
             # The combined exports are appended only after the canonical record exists.
             # If power is lost mid-export, startup rebuilds them from the per-game records.
@@ -642,6 +646,7 @@ def main() -> int:
             derived_positions = []
             for position in record["positions"]:
                 derived = dict(position)
+                derived["time_control"] = time_control_label
                 derived["our_result"] = record["our_result"]
                 derived["result"] = record["result"]
                 append_jsonl(POSITIONS_JSONL, derived)
