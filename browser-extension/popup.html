@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NextGen Chess Memory</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div class="brand-mark">NG</div>
+      <div>
+        <h1>NextGen Chess</h1>
+        <p class="sub">Local engine · position memory · training data</p>
+      </div>
+    </header>
+
+    <div class="notice">
+      Study companion only. Import completed games or analyse a FEN you enter.
+      It does not make moves on Chess.com or provide live-game assistance.
+    </div>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Position lab</h2>
+        <span class="tag">OFFLINE</span>
+      </div>
+      <label for="positionName">Position name</label>
+      <input id="positionName" maxlength="80" placeholder="e.g. Missed fork in game 12">
+      <label for="fen">FEN</label>
+      <textarea id="fen" rows="3" spellcheck="false">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</textarea>
+      <div class="controls">
+        <button id="savePosition" class="secondary">Save position</button>
+        <label class="depth-label" for="depth">Depth</label>
+        <input id="depth" class="depth" type="number" min="1" max="24" value="12">
+      </div>
+      <label class="checkline"><input id="useNnue" type="checkbox"> Use experimental NNUE file (optional)</label>
+      <button id="analyse" class="primary">Analyse with NextGen engine</button>
+      <pre id="analysis" class="analysis" aria-live="polite">Engine not queried yet.</pre>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Import a completed game</h2>
+        <span class="tag neutral">PGN</span>
+      </div>
+      <p class="hint">On Chess.com, open a finished game's analysis/review and copy its PGN. Paste it here. Live games are not read or automated.</p>
+      <label for="gameName">Game label</label>
+      <input id="gameName" maxlength="80" placeholder="e.g. Chess.com rapid — 31 Oct">
+      <label for="pgn">PGN</label>
+      <textarea id="pgn" rows="6" spellcheck="false" placeholder='[Event "Live Chess"]&#10;[Result "1-0"]&#10;&#10;1. e4 e5 2. Nf3 Nc6 ...'></textarea>
+      <button id="saveGame" class="secondary">Add game to memory</button>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Memory</h2>
+        <span id="counts" class="tag neutral">0 positions · 0 games</span>
+      </div>
+      <div id="memoryList" class="memory-list">
+        <p class="empty">Your saved positions and games will appear here.</p>
+      </div>
+      <button id="exportMemory" class="primary">Create / update memory folder</button>
+      <p class="hint small">Choose a folder on your computer. The extension creates <code>NextGen-Chess-Memory/</code> with games, positions and analysis exports.</p>
+      <button id="clearMemory" class="danger">Clear extension memory</button>
+    </section>
+
+    <footer>NextGen Chess Engine · Experimental tools do not guarantee stronger play.</footer>
+    <div id="status" class="status" role="status"></div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

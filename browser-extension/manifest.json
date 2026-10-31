@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "NextGen Chess Memory",
+  "version": "0.1.0",
+  "description": "Local NextGen engine analysis and an exportable memory of your completed chess games and positions.",
+  "action": {
+    "default_title": "NextGen Chess Memory",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["storage", "unlimitedStorage", "nativeMessaging"]
+}
