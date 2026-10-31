@@ -32,6 +32,8 @@ Both engines use one thread and 64 MB Hash on the target 8 GB laptop. Stockfish 
 
 The runner labels every fourth NextGen move by default. For each sampled position, Stockfish 19 gets a 3-second search for its best move and a separate 3-second search constrained to the move NextGen actually played. The resulting record includes the requested time budget and achieved search depth. This is substantially more deliberate than the original 350 ms sampling setup, but an engine evaluation remains an estimate rather than mathematical proof.
 
+The local setup archives the old 350 ms labels under `data/legacy/` and leaves the canonical `data/teacher_positions.jsonl` and `data/missed_best_moves.jsonl` files clean for new 3-second labels. The runner remembers archived position IDs so it does not unexpectedly spend many minutes reprocessing old data at startup. Legacy labels are preserved for auditing but should not be mixed into a clean training run.
+
 ## Resumability and outputs
 
 Every completed game is first written as an atomic JSON record under `data/game_records/`. Combined PGN and JSONL files are rebuilt from canonical records on startup if a prior shutdown interrupted an export.
@@ -41,7 +43,8 @@ Every completed game is first written as an atomic JSON record under `data/game_
 - `data/positions.jsonl`: positions where NextGen moved
 - `data/teacher_positions.jsonl`: Stockfish evaluations and best moves for sampled positions
 - `data/missed_best_moves.jsonl`: sampled moves with a material evaluation loss
-- `reports/session_summary.json`: aggregate counts and resource/time-control settings
+- `data/legacy/`: preserved 350 ms teacher labels and missed-move records from fast preliminary runs
+- `reports/session_summary.json`: aggregate counts and resource/time-control settings, with results grouped by clock
 
 A Windows file lock prevents two Match Lab sessions from writing to the same dataset concurrently. The stop flag is cleared only after the new process has acquired that lock.
 
