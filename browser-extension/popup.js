@@ -212,7 +212,7 @@ $("exportMemory").addEventListener("click", async () => {
       "analyses/engine_analyses.jsonl contains offline NextGen analyses.\n\n" +
       "From the NextGen repository root, run:\n" +
       "  py -m pip install python-chess\n" +
-      "  py scripts/build_extension_memory_dataset.py \"<this folder>\\"\n\n" +
+      "  py scripts/build_extension_memory_dataset.py <path-to-memory-folder>\n\n" +
       "This creates positions/positions.jsonl from the PGN move histories.\n" +
       "No live-game moves are collected or played automatically.\n");
     setStatus("Exported NextGen-Chess-Memory folder successfully.");
