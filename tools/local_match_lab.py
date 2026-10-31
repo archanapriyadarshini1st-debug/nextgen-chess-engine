@@ -9,7 +9,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import msvcrt
+try:
+    import msvcrt
+except ImportError:  # Keep time-control parsing testable on non-Windows CI.
+    msvcrt = None
+import re
 import sys
 import time
 from collections import Counter
@@ -57,8 +61,21 @@ OPENINGS = [
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def parse_time_control(value: str) -> tuple[float, float, str]:
+    """Parse chess clock notation: base minutes + increment seconds (e.g. 3+2)."""
+    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)\s*", value)
+    if not match:
+        raise ValueError("Use Chess.com-style notation: base minutes + increment seconds, e.g. 3+0 or 5+3.")
+    minutes = float(match.group(1))
+    increment = float(match.group(2))
+    if not (0 < minutes <= 1440) or not (0 <= increment <= 3600):
+        raise ValueError("Base time must be > 0 and <= 1440 minutes; increment must be between 0 and 3600 seconds.")
+    return minutes * 60.0, increment, f"{minutes:g}+{increment:g}"
+
 def acquire_process_lock() -> None:
     global LOCK_HANDLE
+    if msvcrt is None:
+        raise RuntimeError("The local Match Lab process lock requires Windows.")
     LOCK_HANDLE = LOCK_PATH.open("a+b")
     LOCK_HANDLE.seek(0, os.SEEK_END)
     if LOCK_HANDLE.tell() == 0:
@@ -339,7 +356,9 @@ def game_from_record(row: dict) -> chess.pgn.Game:
     game.headers["White"] = "NextGen" if row.get("our_white") else "Stockfish 19"
     game.headers["Black"] = "Stockfish 19" if row.get("our_white") else "NextGen"
     game.headers["Result"] = row.get("result", "*")
-    game.headers["TimeControl"] = str(row.get("time_control", ""))
+    # PGN TimeControl is expressed in seconds. Keep the Chess.com-style
+    # minutes+increment label in a separate game-record field.
+    game.headers["TimeControl"] = str(row.get("time_control_pgn", row.get("time_control", "")))
     game.headers["Termination"] = str(row.get("termination", ""))
     game.headers["OpeningUCI"] = str(row.get("opening", ""))
     game.headers["PlyCount"] = str(row.get("ply", ""))
@@ -482,10 +501,12 @@ def write_summary(state: dict, results: Counter) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--clock-seconds", type=float, default=180.0,
-                        help="starting real-time clock for each side; default 180 seconds (3 minutes)")
-    parser.add_argument("--increment-seconds", type=float, default=0.0,
-                        help="Fischer increment added after each move; default 0 for 3+0")
+    parser.add_argument("--time-control", default="3+0",
+                        help="Chess clock notation: base minutes + increment seconds, e.g. 1+0, 3+0, 5+3, 10+5")
+    parser.add_argument("--clock-seconds", type=float, default=None,
+                        help="legacy override: starting clock seconds per side")
+    parser.add_argument("--increment-seconds", type=float, default=None,
+                        help="legacy override: Fischer increment seconds per move")
     parser.add_argument("--hash-mb", type=int, default=64,
                         help="Hash memory per engine; 64 MB each is a conservative starting point")
     parser.add_argument("--threads", type=int, default=1)
@@ -499,12 +520,25 @@ def main() -> int:
     parser.add_argument("--pause-between-games", type=float, default=1.0)
     parser.add_argument("--max-games", type=int, default=0,
                         help="0 means continuous until Stop-After-Game is clicked")
+    parser.add_argument("--validate-only", action="store_true",
+                        help="validate and print the selected clock without starting engines")
     args = parser.parse_args()
 
+    try:
+        parsed_clock, parsed_increment, time_control_label = parse_time_control(args.time_control)
+    except ValueError as exc:
+        parser.error(str(exc))
+    args.clock_seconds = parsed_clock if args.clock_seconds is None else args.clock_seconds
+    args.increment_seconds = parsed_increment if args.increment_seconds is None else args.increment_seconds
     if args.clock_seconds <= 0 or args.increment_seconds < 0 or args.hash_mb < 16 or args.threads < 1:
         parser.error("clock must be > 0; increment must be >= 0; Hash must be >= 16 MB; Threads must be >= 1")
+    if args.clock_seconds != parsed_clock or args.increment_seconds != parsed_increment:
+        time_control_label = f"{args.clock_seconds / 60:g}+{args.increment_seconds:g}"
     if args.teacher_every < 1 or args.teacher_seconds <= 0 or args.max_ply < 20:
         parser.error("teacher interval/time must be positive and max-ply must be >= 20")
+    if args.validate_only:
+        print(f"Valid time control: {time_control_label} ({args.clock_seconds:g} seconds base + {args.increment_seconds:g} seconds increment)")
+        return 0
     if not OUR.is_file():
         raise SystemExit(f"NextGen executable missing: {OUR}")
     sf_path = find_stockfish()
@@ -536,7 +570,7 @@ def main() -> int:
         "discarded_games": int(state.get("discarded_games", 0)),
         "clock_seconds_each": args.clock_seconds,
         "increment_seconds": args.increment_seconds,
-        "time_control": f"{args.clock_seconds:g}+{args.increment_seconds:g}",
+        "time_control": time_control_label,
         "hash_mb_each": args.hash_mb,
         "threads_each": args.threads,
         "stockfish": "Stockfish 19 MAX (UCI_LimitStrength=false)",
@@ -550,7 +584,7 @@ def main() -> int:
     print(f"Stockfish: {sf_path}")
     print(f"Completed games saved: {completed}")
     print(f"Resources: {args.threads} thread(s) and {args.hash_mb} MB Hash per engine")
-    print(f"Clock: {args.clock_seconds:g}+{args.increment_seconds:g} per side (real-time UCI clock)")
+    print(f"Clock: {time_control_label} (real-time UCI clock; base is minutes, increment is seconds)")
     print(f"Teacher: {args.teacher_seconds:g}s per Stockfish analysis, every {args.teacher_every}th NextGen move")
     print("Stockfish: full strength; NextGen experience book: OFF")
     print("Press Stop-After-Game.bat to finish the current game and stop.")
@@ -598,7 +632,8 @@ def main() -> int:
             game = match.pop("game")
             record = dict(match)
             record["date"] = datetime.now().strftime("%Y.%m.%d")
-            record["time_control"] = f"{args.clock_seconds:g}+{args.increment_seconds:g}"
+            record["time_control"] = time_control_label
+            record["time_control_pgn"] = f"{args.clock_seconds:g}+{args.increment_seconds:g}"
             # One atomic JSON file is the source of truth for each completed game.
             # The combined exports are appended only after the canonical record exists.
             # If power is lost mid-export, startup rebuilds them from the per-game records.
@@ -647,7 +682,7 @@ def main() -> int:
                 "missed_moves": state.get("missed_moves", 0),
                 "clock_seconds_each": args.clock_seconds,
                 "increment_seconds": args.increment_seconds,
-                "time_control": f"{args.clock_seconds:g}+{args.increment_seconds:g}",
+                "time_control": time_control_label,
                 "teacher_seconds_per_analysis": args.teacher_seconds,
                 "elapsed_seconds_this_session": round(time.monotonic() - started, 1),
                 "last_result": match["our_result"],
