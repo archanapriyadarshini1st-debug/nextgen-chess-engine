@@ -46,7 +46,7 @@ Validate a selection without starting either engine:
 python tools/local_match_lab.py --time-control 5+3 --validate-only
 ```
 
-The default mode runs continuously. Add `--max-games 2` for a bounded run. Stop after the current game by creating `STOP_AFTER_GAME` in the repository root, or press Ctrl+C in the console. Completed games are persisted before the next game starts.
+The default mode runs continuously. Add `--max-games 2` for a bounded run. Stop after the current game by creating `STOP_AFTER_GAME` in the repository root, or press Ctrl+C in the console. Completed games are persisted before the next game starts. Opening selection and NextGen's White/Black alternation are tracked independently for each time control, so switching from one clock to another does not split a paired opening test.
 
 ## Real clock and fair resources
 
