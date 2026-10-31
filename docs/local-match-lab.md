@@ -12,19 +12,45 @@ The local Match Lab runs NextGen against Stockfish 19 MAX on a Windows PC. It is
 
 The runner searches Stockfish recursively under `bin/stockfish19/`, so the official ZIP's nested folder layout is supported.
 
-## Run
+## Choose a time control
 
-Double-click `Start-Match-Lab.bat`, or run from the repository root:
+At the repository root, double-click `Start-Match-Lab.bat` to open the clickable time-control picker. Choose a preset or enter a custom value such as `7+2`.
 
-```powershell
-python tools/local_match_lab.py --clock-seconds 180 --increment-seconds 0 --hash-mb 64 --threads 1 --teacher-every 4 --teacher-seconds 3.0 --max-ply 600
+Available presets:
+
+- Bullet: `1+0`, `2+1`
+- Blitz: `3+0`, `3+2`, `5+0`, `5+3`
+- Rapid: `10+0`, `10+5`, `15+10`
+
+The format is **base minutes + increment seconds**. You can also start directly from a terminal:
+
+```bat
+Start-Match-Lab.bat 5+3
 ```
 
-The default mode runs continuously. Add `--max-games 2` for a bounded test. Stop after the current game by creating `STOP_AFTER_GAME` in the repository root, or press Ctrl+C in the console. Completed games are persisted before the next game starts.
+Or have the terminal prompt for a value:
 
-## Tournament clock and fair resources
+```bat
+Start-Match-Lab.bat --terminal
+```
 
-Both engines receive an actual UCI clock of **3 minutes each, with no increment (3+0)**. The runner sends White's and Black's current remaining clock values to the engine on every move, tracks elapsed time independently for each side, adds any configured Fischer increment, and records clock usage in each game. A flag fall is scored as a time forfeit, with the standard insufficient-mating-material draw condition handled.
+The Python runner can be called directly:
+
+```powershell
+python tools/local_match_lab.py --time-control 3+0
+```
+
+Validate a selection without starting either engine:
+
+```powershell
+python tools/local_match_lab.py --time-control 5+3 --validate-only
+```
+
+The default mode runs continuously. Add `--max-games 2` for a bounded run. Stop after the current game by creating `STOP_AFTER_GAME` in the repository root, or press Ctrl+C in the console. Completed games are persisted before the next game starts.
+
+## Real clock and fair resources
+
+The selected time control is a real UCI clock, not a fixed time-per-move budget. Both engines receive White's and Black's remaining clock values on every move. The runner tracks elapsed time independently for both sides, applies the selected Fischer increment, records the clock trace, and scores flag falls correctly.
 
 Both engines use one thread and 64 MB Hash on the target 8 GB laptop. Stockfish is configured with `UCI_LimitStrength=false`; no Elo or skill cap is applied. The NextGen experience book is disabled so the match measures the current engine baseline rather than memorized opening hints. The 600-ply cap is a high safety limit, not a normal game-ending target.
 
@@ -32,7 +58,7 @@ Both engines use one thread and 64 MB Hash on the target 8 GB laptop. Stockfish 
 
 The runner labels every fourth NextGen move by default. For each sampled position, Stockfish 19 gets a 3-second search for its best move and a separate 3-second search constrained to the move NextGen actually played. The resulting record includes the requested time budget and achieved search depth. This is substantially more deliberate than the original 350 ms sampling setup, but an engine evaluation remains an estimate rather than mathematical proof.
 
-The local setup archives the old 350 ms labels under `data/legacy/` and leaves the canonical `data/teacher_positions.jsonl` and `data/missed_best_moves.jsonl` files clean for new 3-second labels. The runner remembers archived position IDs so it does not unexpectedly spend many minutes reprocessing old data at startup. Legacy labels are preserved for auditing but should not be mixed into a clean training run.
+The old 350 ms labels are archived under `data/legacy/` and excluded from the clean active teacher files. Their position IDs remain marked complete so the runner does not spend time silently relabelling the old games at startup.
 
 ## Resumability and outputs
 
@@ -41,10 +67,12 @@ Every completed game is first written as an atomic JSON record under `data/game_
 - `data/games.pgn`: all completed games
 - `data/games.jsonl`: game summaries and per-move clock trace
 - `data/positions.jsonl`: positions where NextGen moved
-- `data/teacher_positions.jsonl`: Stockfish evaluations and best moves for sampled positions
+- `data/teacher_positions.jsonl`: clean Stockfish evaluations and best moves for sampled positions
 - `data/missed_best_moves.jsonl`: sampled moves with a material evaluation loss
-- `data/legacy/`: preserved 350 ms teacher labels and missed-move records from fast preliminary runs
-- `reports/session_summary.json`: aggregate counts and resource/time-control settings, with results grouped by clock
+- `data/legacy/`: preserved fast preliminary labels and missed-move records
+- `reports/session_summary.json`: aggregate counts and results grouped by selected time control
+
+Game records store the Chess.com-style label (for example, `3+0`) separately from the PGN-standard `TimeControl` value, which is expressed in seconds.
 
 A Windows file lock prevents two Match Lab sessions from writing to the same dataset concurrently. The stop flag is cleared only after the new process has acquired that lock.
 
@@ -52,7 +80,7 @@ A Windows file lock prevents two Match Lab sessions from writing to the same dat
 
 Played moves are not assumed to be correct. Stockfish labels are written to a separate teacher dataset; the runner does not automatically replace the NNUE network.
 
-When there are at least 100 usable teacher positions, copy the exported teacher files into the repository's `datasets/` folder and train a separate candidate network with the existing trainer:
+When there are at least 100 usable teacher positions, copy the clean teacher files into the repository's `datasets/` folder and train a separate candidate network with the existing trainer:
 
 ```powershell
 python training/train_nnue_teacher.py --dataset datasets/teacher_positions.jsonl --dataset datasets/missed_best_moves.jsonl --out networks/local_match_candidate.pt --report networks/local_match_candidate_report.json --epochs 20 --patience 4 --cpu
@@ -62,4 +90,4 @@ A candidate must still pass the repository's independent evaluation and balanced
 
 ## Interpreting results
 
-The earlier 150 ms-per-move smoke-test games are useful only for checking that the pipeline runs; they are not calibrated rating evidence and should not be mixed with 3+0 tournament results when estimating strength. Keep datasets and evaluation reports tagged by time control.
+The earlier 150 ms-per-move smoke-test games are useful only for checking that the pipeline runs; they are not calibrated rating evidence and should not be mixed with 3+0 tournament results when estimating strength. Reports keep results grouped by time control.
