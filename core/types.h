@@ -11,8 +11,10 @@ using Bitboard = std::uint64_t;
 using Key = std::uint64_t;
 using Score = std::int32_t;
 
-constexpr Score INF = 30000;
 constexpr Score MATE_SCORE = 32000;
+// Search bounds must sit outside every representable mate score.
+constexpr Score INF = MATE_SCORE + 1;
+static_assert(INF > MATE_SCORE);
 constexpr int MAX_PLY = 128;
 
 constexpr std::uint32_t FLAG_CAPTURE = 1u << 0;
