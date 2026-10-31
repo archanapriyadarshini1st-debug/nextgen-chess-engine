@@ -37,7 +37,9 @@ jobs:
           python tests/test_engine_weakness_audit.py
       - name: Validate local match runner and time controls
         run: |
-          python -m py_compile tools/local_match_lab.py
+          python -m py_compile tools/local_match_lab.py tools/run_tournament_series.py tests/test_tournament_series.py
+          python tests/test_tournament_series.py
+          python tools/run_tournament_series.py --validate-only
           python tools/local_match_lab.py --time-control 1+0 --validate-only
           python tools/local_match_lab.py --time-control 3+0 --validate-only
           python tools/local_match_lab.py --time-control 5+3 --validate-only

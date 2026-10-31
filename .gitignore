@@ -20,3 +20,10 @@ networks/nnue.nnue
 .idea/
 __pycache__/
 *.pyc
+
+# Local Match Lab and tournament-series outputs
+/data/
+/reports/tournament_series/
+STOP_AFTER_GAME
+STOP_TOURNAMENT_SERIES
+match_lab.lock

@@ -91,3 +91,24 @@ A candidate must still pass the repository's independent evaluation and balanced
 ## Interpreting results
 
 The earlier 150 ms-per-move smoke-test games are useful only for checking that the pipeline runs; they are not calibrated rating evidence and should not be mixed with 3+0 tournament results when estimating strength. Reports keep results grouped by time control.
+
+## Resumable tournament series
+
+The first controlled pilot is **10 tournaments x 100 games = 1,000 games** at 3+0. Each tournament is 100 games. Adjacent games repeat the same opening with NextGen colors reversed, and later tournaments rotate to different openings.
+
+On the Windows Match Lab PC, validate the defaults and then start the series:
+
+    python tools/run_tournament_series.py --validate-only
+    python tools/run_tournament_series.py
+
+The defaults are 10 tournaments, 100 games per tournament, 3+0, one thread and 64 MB Hash per engine. Stockfish 19 runs uncapped. The local Match Lab labels every fourth NextGen move using the configured Stockfish analysis budget.
+
+This is a **frozen-engine collection experiment**: no training or NNUE promotion occurs during the games. The NextGen experience book stays disabled. SHA-256 fingerprints of both engine binaries are saved so a changed binary cannot silently be mixed into the same series.
+
+The first run prints a series ID. Keep it to resume after a pause or restart:
+
+    python tools/run_tournament_series.py --series-id YOUR_PRINTED_SERIES_ID
+
+Use the same settings when resuming. Stop-After-Game.bat safely stops after the active game; completed records remain saved. The manager stores per-series manifests and summaries under reports/tournament_series/. Canonical games, PGNs, positions and teacher labels stay in data/ and are tagged with their series and tournament IDs. Previous smoke-test games and archived fast labels are not included in this series summary.
+
+The 1,000 games are a pilot dataset, not a strength claim. Keep the engine version fixed for the full baseline series; analyse and train candidates only after this collection is complete.

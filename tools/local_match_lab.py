@@ -72,6 +72,16 @@ def parse_time_control(value: str) -> tuple[float, float, str]:
         raise ValueError("Base time must be > 0 and <= 1440 minutes; increment must be between 0 and 3600 seconds.")
     return minutes * 60.0, increment, f"{minutes:g}+{increment:g}"
 
+
+def tournament_game_plan(tournament_number: int, game_index: int) -> tuple[bool, str, int]:
+    """Return a paired-color/opening plan local to one tournament."""
+    if tournament_number < 1 or game_index < 0:
+        raise ValueError("tournament_number must be >= 1 and game_index must be >= 0")
+    pair_number = game_index // 2
+    opening_offset = (tournament_number - 1) * 7
+    opening = OPENINGS[(opening_offset + pair_number) % len(OPENINGS)]
+    return game_index % 2 == 0, opening, pair_number + 1
+
 def acquire_process_lock() -> None:
     global LOCK_HANDLE
     if msvcrt is None:
@@ -349,7 +359,9 @@ def game_from_record(row: dict) -> chess.pgn.Game:
             raise ValueError(f"Saved game {row.get('game_id')} contains illegal move {token}")
         node = node.add_variation(move)
         board.push(move)
-    game.headers["Event"] = "NextGen Local Match Lab"
+    game.headers["Event"] = str(row.get("event_name", "NextGen Local Match Lab"))
+    if row.get("series_id"):
+        game.headers["Tournament"] = f"{row['series_id']}-{int(row.get('tournament_number', 0)):02d}"
     game.headers["Site"] = "Local Windows PC"
     game.headers["Date"] = str(row.get("date", datetime.now().strftime("%Y.%m.%d")))
     game.headers["Round"] = str(row.get("game_number", ""))
@@ -469,6 +481,9 @@ def label_pending_positions(sf, every_n: int, teacher_seconds: float,
                 "time_control": row.get("time_control", "unknown"),
                 "our_result": row.get("our_result"),
                 "timestamp_utc": now(),
+                "series_id": row.get("series_id"),
+                "tournament_number": row.get("tournament_number"),
+                "tournament_game_number": row.get("tournament_game_number"),
             }
             append_jsonl(TEACHER_JSONL, teacher_row)
             if cp_loss >= min_cp_loss:
@@ -522,6 +537,9 @@ def main() -> int:
     parser.add_argument("--pause-between-games", type=float, default=1.0)
     parser.add_argument("--max-games", type=int, default=0,
                         help="0 means continuous until Stop-After-Game is clicked")
+    parser.add_argument("--series-id", default=None)
+    parser.add_argument("--tournament-number", type=int, default=None)
+    parser.add_argument("--tournament-games", type=int, default=None)
     parser.add_argument("--validate-only", action="store_true",
                         help="validate and print the selected clock without starting engines")
     args = parser.parse_args()
@@ -538,6 +556,14 @@ def main() -> int:
         time_control_label = f"{args.clock_seconds / 60:g}+{args.increment_seconds:g}"
     if args.teacher_every < 1 or args.teacher_seconds <= 0 or args.max_ply < 20:
         parser.error("teacher interval/time must be positive and max-ply must be >= 20")
+    series_args_present = args.series_id is not None or args.tournament_number is not None or args.tournament_games is not None
+    if series_args_present:
+        if not args.series_id or args.tournament_number is None or args.tournament_games is None:
+            parser.error("--series-id, --tournament-number and --tournament-games must be supplied together")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", args.series_id):
+            parser.error("--series-id must be a 1-64 character safe identifier")
+        if args.tournament_number < 1 or args.tournament_games < 2 or args.tournament_games % 2:
+            parser.error("--tournament-number must be >= 1 and --tournament-games must be an even integer >= 2")
     if args.validate_only:
         print(f"Valid time control: {time_control_label} ({args.clock_seconds:g} seconds base + {args.increment_seconds:g} seconds increment)")
         return 0
@@ -570,6 +596,15 @@ def main() -> int:
     control_games_completed = sum(
         1 for row in saved_game_rows if row.get("time_control") == time_control_label
     )
+    tournament_games_completed = 0
+    if args.series_id:
+        tournament_games_completed = sum(
+            1 for row in saved_game_rows
+            if row.get("series_id") == args.series_id
+            and int(row.get("tournament_number", 0) or 0) == args.tournament_number
+        )
+        if tournament_games_completed > args.tournament_games:
+            raise SystemExit("Saved games exceed this tournament's configured target; refusing to append.")
     teacher_keys = teacher_done_keys()
     state.update({
         "schema": "nextgen-local-match-lab-v1",
@@ -586,6 +621,10 @@ def main() -> int:
         "teacher_every_nth_nextgen_move": args.teacher_every,
         "teacher_seconds_per_analysis": args.teacher_seconds,
         "games_in_selected_time_control": control_games_completed,
+        "series_id": args.series_id,
+        "tournament_number": args.tournament_number,
+        "tournament_games_target": args.tournament_games,
+        "tournament_games_already_saved": tournament_games_completed,
     })
     print("=" * 64)
     print("NEXTGEN LOCAL MATCH LAB")
@@ -595,6 +634,8 @@ def main() -> int:
     print(f"Resources: {args.threads} thread(s) and {args.hash_mb} MB Hash per engine")
     print(f"Clock: {time_control_label} (real-time UCI clock; base is minutes, increment is seconds)")
     print(f"Games already recorded at this clock: {control_games_completed}")
+    if args.series_id:
+        print(f"Series: {args.series_id} | tournament {args.tournament_number} | {tournament_games_completed}/{args.tournament_games} already saved")
     print(f"Teacher: {args.teacher_seconds:g}s per Stockfish analysis, every {args.teacher_every}th NextGen move")
     print("Stockfish: full strength; NextGen experience book: OFF")
     print("Press Stop-After-Game.bat to finish the current game and stop.")
@@ -603,6 +644,9 @@ def main() -> int:
     our = sf = None
     started = time.monotonic()
     wins = losses = draws = discarded = 0
+    new_games = 0
+    stop_requested = False
+    interrupted = False
     try:
         our = start_engine(OUR, args.hash_mb, args.threads, False)
         sf = start_engine(sf_path, args.hash_mb, args.threads, True)
@@ -612,18 +656,24 @@ def main() -> int:
         if pending:
             print(f"Recovered {pending} pending teacher labels.", flush=True)
 
-        new_games = 0
         while True:
             if STOP.exists():
+                stop_requested = True
                 print("Stop request found. No new game will be started.", flush=True)
                 break
             if args.max_games and new_games >= args.max_games:
                 break
             game_number = completed + 1
             control_game_index = control_games_completed
-            pair_number = control_game_index // 2
-            our_white = (control_game_index % 2 == 0)
-            opening = OPENINGS[pair_number % len(OPENINGS)]
+            if args.series_id:
+                tournament_game_index = tournament_games_completed + new_games
+                our_white, opening, tournament_pair_number = tournament_game_plan(args.tournament_number, tournament_game_index)
+            else:
+                pair_number = control_game_index // 2
+                our_white = (control_game_index % 2 == 0)
+                opening = OPENINGS[pair_number % len(OPENINGS)]
+                tournament_game_index = None
+                tournament_pair_number = None
             print(f"\nGame {game_number}: NextGen {'White' if our_white else 'Black'} | opening {opening or 'start position'}", flush=True)
             match, error = play_one(our, sf, game_number, our_white, opening,
                                     args.clock_seconds, args.increment_seconds, args.max_ply)
@@ -645,8 +695,23 @@ def main() -> int:
             record["date"] = datetime.now().strftime("%Y.%m.%d")
             record["time_control"] = time_control_label
             record["time_control_pgn"] = f"{args.clock_seconds:g}+{args.increment_seconds:g}"
+            if args.series_id:
+                event_name = f"NextGen tournament series {args.series_id} - tournament {args.tournament_number:02d}"
+                game.headers["Event"] = event_name
+                game.headers["Tournament"] = f"{args.series_id}-{args.tournament_number:02d}"
+                game.headers["Round"] = str(tournament_game_index + 1)
+                record["event_name"] = event_name
+                record["series_id"] = args.series_id
+                record["tournament_number"] = args.tournament_number
+                record["tournament_game_number"] = tournament_game_index + 1
+                record["tournament_games_target"] = args.tournament_games
+                record["tournament_pair_number"] = tournament_pair_number
             for position in record["positions"]:
                 position["time_control"] = time_control_label
+                if args.series_id:
+                    position["series_id"] = args.series_id
+                    position["tournament_number"] = args.tournament_number
+                    position["tournament_game_number"] = tournament_game_index + 1
             # One atomic JSON file is the source of truth for each completed game.
             # The combined exports are appended only after the canonical record exists.
             # If power is lost mid-export, startup rebuilds them from the per-game records.
@@ -702,13 +767,19 @@ def main() -> int:
                 "games_in_selected_time_control": control_games_completed,
                 "elapsed_seconds_this_session": round(time.monotonic() - started, 1),
                 "last_result": match["our_result"],
+                "series_id": args.series_id,
+                "tournament_number": args.tournament_number,
+                "tournament_games_target": args.tournament_games,
+                "tournament_games_saved": (tournament_games_completed + new_games) if args.series_id else None,
             })
             write_summary(state, results)
             if STOP.exists():
+                stop_requested = True
                 print("Stop request received. Current game and labels are saved.", flush=True)
                 break
             time.sleep(max(0.0, args.pause_between_games))
     except KeyboardInterrupt:
+        interrupted = True
         print("\nInterrupted. Completed games remain saved; an unfinished game is discarded.", flush=True)
     finally:
         safe_quit(our)
@@ -727,6 +798,8 @@ def main() -> int:
         finally:
             release_process_lock()
     print("\nMatch Lab stopped. All completed games and teacher labels are saved.", flush=True)
+    if args.series_id and (stop_requested or interrupted) and (tournament_games_completed + new_games < args.tournament_games):
+        return 3
     return 0
 
 if __name__ == "__main__":

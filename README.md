@@ -90,3 +90,7 @@ g++ -std=c++20 -O2 -pthread -I. core/*.cpp search/*.cpp evaluation/eval.cpp nnue
 - Evaluation now scores actually controlled central squares, and a start-position side-to-move symmetry regression test guards against color bias.
 - Elo/candidate measurements disable the shared experience book; otherwise both engines could replay teacher-suggested moves and hide the effect of their evaluators.
 - Release-mode CTest keeps C++ assertions enabled. The short candidate gate is a screening test only; use the independent Stockfish tournament and a larger SPRT match for real strength claims.
+
+## Local 1,000-game tournament pilot
+
+On the Windows Match Lab PC, run `python tools/run_tournament_series.py --validate-only` and then `python tools/run_tournament_series.py` to run 10 paired-color tournaments of 100 games each (3+0 by default). The manager resumes by series ID, pins the NextGen and Stockfish binary hashes, tags every game and teacher label, and writes per-tournament and aggregate summaries under `reports/tournament_series/`. It does not train or replace an NNUE during this baseline collection. See `docs/local-match-lab.md`.
