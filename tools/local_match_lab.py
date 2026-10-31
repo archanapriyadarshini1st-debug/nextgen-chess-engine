@@ -364,7 +364,7 @@ def game_from_record(row: dict) -> chess.pgn.Game:
         game.headers["Tournament"] = f"{row['series_id']}-{int(row.get('tournament_number', 0)):02d}"
     game.headers["Site"] = "Local Windows PC"
     game.headers["Date"] = str(row.get("date", datetime.now().strftime("%Y.%m.%d")))
-    game.headers["Round"] = str(row.get("game_number", ""))
+    game.headers["Round"] = str(row.get("tournament_game_number", row.get("game_number", "")))
     game.headers["White"] = "NextGen" if row.get("our_white") else "Stockfish 19"
     game.headers["Black"] = "Stockfish 19" if row.get("our_white") else "NextGen"
     game.headers["Result"] = row.get("result", "*")

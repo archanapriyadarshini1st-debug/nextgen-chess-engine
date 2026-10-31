@@ -82,6 +82,10 @@ def load_tournament_records(series_id: str, tournament_number: int) -> list[dict
 def pairing_issues(rows: list[dict[str, Any]]) -> list[str]:
     issues = []
     ordered = sorted(rows, key=lambda row: int(row.get("tournament_game_number", 0) or 0))
+    expected_numbers = list(range(1, len(ordered) + 1))
+    actual_numbers = [int(row.get("tournament_game_number", 0) or 0) for row in ordered]
+    if actual_numbers != expected_numbers:
+        issues.append("tournament game numbers are not a contiguous sequence starting at 1")
     for index in range(0, len(ordered) - 1, 2):
         first, second = ordered[index], ordered[index + 1]
         pair = index // 2 + 1
@@ -316,6 +320,11 @@ def main() -> int:
             if saved == args.games_per_tournament:
                 teacher, missed = read_series_labels(series_id, number)
                 summary = summarize_tournament(rows, args.games_per_tournament, teacher, missed)
+                if summary["paired_color_opening_check"] != "PASS":
+                    manifest["status"] = "failed"
+                    manifest["tournaments"][key] = {"status": "failed", "summary": summary, "updated_utc": utc_now()}
+                    atomic_json(manifest_path, manifest)
+                    raise SystemExit(f"Tournament {number} failed paired-color/opening validation.")
                 manifest["tournaments"][key] = {"status": "complete", "summary": summary, "updated_utc": utc_now()}
                 atomic_json(manifest_path, manifest)
                 print(f"Tournament {number}/{args.tournaments}: already complete.", flush=True)
