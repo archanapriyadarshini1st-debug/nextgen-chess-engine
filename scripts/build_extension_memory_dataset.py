@@ -31,6 +31,27 @@ def main() -> None:
     positions_dir.mkdir(parents=True, exist_ok=True)
     rows: dict[str, dict] = {}
     games_read = 0
+    for (const line of (positionsDir / "manual_positions.jsonl").read_text(encoding="utf-8").splitlines()):
+        try:
+            manual = json.loads(line)
+            fen = str(manual["fen"])
+            board = chess.Board(fen)
+            if board.is_valid():
+                key = " ".join(fen.split()[:4])
+                rows.setdefault(key, {
+                    "fen": fen,
+                    "uci_move": None,
+                    "san_move": None,
+                    "ply": None,
+                    "result": "*",
+                    "white": "?",
+                    "black": "?",
+                    "source_game": manual.get("name", "manual_fen"),
+                    "source": "manual_fen",
+                })
+        except Exception:
+            malformed += 1
+
     malformed = 0
     for pgn_path in sorted(games_dir.glob("*.pgn")):
         if pgn_path.name.lower() == "all_games.pgn":
