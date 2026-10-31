@@ -35,3 +35,8 @@ jobs:
           python -m pip install --disable-pip-version-check python-chess
           python -m py_compile tools/clock_match.py tools/analyze_engine_weakness.py tests/test_engine_weakness_audit.py
           python tests/test_engine_weakness_audit.py
+      - name: Validate NextGen Chrome extension and memory importer
+        run: |
+          node --check browser-extension/popup.js
+          python -m py_compile scripts/build_extension_memory_dataset.py
+          python -c "import json; json.load(open('browser-extension/manifest.json', encoding='utf-8'))"
