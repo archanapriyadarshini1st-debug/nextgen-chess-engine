@@ -122,6 +122,7 @@ $("analyse").addEventListener("click", () => {
   const fen = $("fen").value.trim();
   const error = validateFenShape(fen);
   if (error) { setStatus(error, true); return; }
+  if (!$("postgameConfirm").checked) { setStatus("Engine analysis is for completed games and study positions only.", true); return; }
   const depth = Math.max(1, Math.min(24, Number($("depth").value) || 12));
   $("analyse").disabled = true;
   $("analysis").textContent = "Starting the local NextGen engine…";
