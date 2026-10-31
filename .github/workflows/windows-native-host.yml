@@ -1,0 +1,39 @@
+name: NextGen Windows Native Host
+
+on:
+  push:
+    branches:
+      - feature/nextgen-memory-extension-2026-10-31
+    paths:
+      - "browser-extension/**"
+      - "core/**"
+      - "search/**"
+      - "evaluation/**"
+      - "nnue/**"
+      - "uci/**"
+      - "opening/**"
+      - "logging/**"
+      - "tb/**"
+      - "CMakeLists.txt"
+      - "tests/test_nextgen_native_host.py"
+      - ".github/workflows/windows-native-host.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure NextGen engine
+        run: cmake -S . -B build -A x64 -DBUILD_TESTS=OFF
+      - name: Build NextGen engine
+        run: cmake --build build --config Release --target chess_engine
+      - name: Compile native messaging host
+        shell: pwsh
+        run: |
+          $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) { throw "Framework C# compiler not found: $csc" }
+          & $csc /nologo /target:exe /reference:System.Web.Extensions.dll /out:browser-extension\native-host\NextGenNativeHost.exe browser-extension\native-host\NextGenNativeHost.cs
+          if ($LASTEXITCODE -ne 0) { throw "Native host compilation failed." }
+      - name: Test Native Messaging framing
+        run: python tests/test_nextgen_native_host.py browser-extension/native-host/NextGenNativeHost.exe
