@@ -66,9 +66,9 @@ Every completed game is first written as an atomic JSON record under `data/game_
 
 - `data/games.pgn`: all completed games
 - `data/games.jsonl`: game summaries and per-move clock trace
-- `data/positions.jsonl`: positions where NextGen moved
-- `data/teacher_positions.jsonl`: clean Stockfish evaluations and best moves for sampled positions
-- `data/missed_best_moves.jsonl`: sampled moves with a material evaluation loss
+- `data/positions.jsonl`: positions where NextGen moved, each tagged with the selected time control
+- `data/teacher_positions.jsonl`: clean Stockfish evaluations and best moves for sampled positions, tagged with time control
+- `data/missed_best_moves.jsonl`: sampled moves with a material evaluation loss, tagged with time control
 - `data/legacy/`: preserved fast preliminary labels and missed-move records
 - `reports/session_summary.json`: aggregate counts and results grouped by selected time control
 
