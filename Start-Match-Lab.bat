@@ -18,11 +18,17 @@ if errorlevel 1 (
 )
 
 set "TIME_CONTROL=%~1"
+set "TC_FILE=%TEMP%\nextgen-time-control-%RANDOM%-%RANDOM%.txt"
+
 if /i "%TIME_CONTROL%"=="--terminal" (
   set /p "TIME_CONTROL=Enter time control (minutes+increment seconds, e.g. 3+0 or 5+3): "
 ) else if "%TIME_CONTROL%"=="" (
-  set "TC_FILE=%TEMP%\nextgen-time-control-%RANDOM%-%RANDOM%.txt"
-  powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "tools\select_time_control.ps1" -OutputFile "%TC_FILE%"
+  if not defined TC_FILE (
+    echo Could not create a temporary time-control filename.
+    pause
+    exit /b 1
+  )
+  powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0tools\select_time_control.ps1" -OutputFile "%TC_FILE%"
   if errorlevel 1 (
     echo Time-control selection cancelled or failed.
     del "%TC_FILE%" >nul 2>&1
@@ -36,6 +42,12 @@ if /i "%TIME_CONTROL%"=="--terminal" (
   )
   set /p "TIME_CONTROL="<"%TC_FILE%"
   del "%TC_FILE%" >nul 2>&1
+)
+
+if not defined TIME_CONTROL (
+  echo No time control was selected.
+  pause
+  exit /b 1
 )
 
 echo.
