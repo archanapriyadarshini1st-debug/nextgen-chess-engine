@@ -40,3 +40,5 @@ jobs:
           node --check browser-extension/popup.js
           python -m py_compile scripts/build_extension_memory_dataset.py
           python -c "import json; json.load(open('browser-extension/manifest.json', encoding='utf-8'))"
+      - name: Validate local match runner syntax
+        run: python -m py_compile tools/local_match_lab.py
