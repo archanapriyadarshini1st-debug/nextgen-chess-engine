@@ -124,7 +124,7 @@ jobs:
           set -o pipefail
           mkdir -p benchmark-results
           echo "NextGen vs Stockfish 19 UCI_Elo=$SF_ELO | games=$GAMES | tc=$TC" | tee benchmark-results/run-info.txt
-          cutechess-cli \
+          "$CUTECHESS_BIN" \
             -engine name=NextGen cmd=./bin/chess_engine proto=uci option.Hash=128 option.Threads=1 \
             -engine name=Stockfish19 cmd="$SF_BIN" proto=uci option.Hash=128 option.Threads=1 option.UCI_LimitStrength=true option.UCI_Elo="$SF_ELO" \
             -each tc="$TC" \
@@ -136,6 +136,10 @@ jobs:
 
       - name: Calculate performance estimate and confidence interval
         if: always()
+        env:
+          GAMES: ${{ inputs.games }}
+          TC: ${{ inputs.tc }}
+          SF_ELO: ${{ inputs.sf_elo }}
         run: |
           python3 -m pip install --user --break-system-packages python-chess
           cat > /tmp/report.py <<'PY'
