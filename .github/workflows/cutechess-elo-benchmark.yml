@@ -137,6 +137,7 @@ jobs:
       - name: Calculate performance estimate and confidence interval
         if: always()
         run: |
+          python3 -m pip install --user --break-system-packages python-chess
           cat > /tmp/report.py <<'PY'
           import chess.pgn, json, math, os, statistics
           from pathlib import Path
