@@ -1,63 +1,98 @@
-name: Stockfish 19 MAX training batch
+name: Stockfish 19 MAX quality training batch
 
 on:
-  # Push to this experiment branch launches the quality-controlled 10+0 batch.
-  # The path filter prevents later data/report commits from starting another run.
+  # Editing this workflow on the experiment branch starts one controlled batch.
+  # Data commits are outside this path filter and cannot recursively start runs.
   push:
     branches:
       - feature/nextgen-memory-extension-2026-10-31
     paths:
       - '.github/workflows/sf19-max-training.yml'
   workflow_dispatch:
-    inputs:
-      games:
-        description: "Number of true 10+0 quality games"
-        type: choice
-        required: true
-        default: "12"
-        options:
-          - "8"
-          - "10"
-          - "12"
 
 permissions:
   contents: write
 
 concurrency:
-  group: nextgen-sf19-max-training-${{ github.ref }}
+  group: nextgen-sf19-quality-training-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  train:
+  prepare-openings:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
+      - name: Install opening-generation tooling
+        run: python -m pip install --upgrade pip python-chess
+      - name: Download official Stockfish 19
+        run: |
+          mkdir -p /tmp/sf19
+          curl --fail --location --retry 3 \
+            https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz \
+            --output /tmp/stockfish19.tar.gz
+          tar -xzf /tmp/stockfish19.tar.gz -C /tmp/sf19 --strip-components=1
+          STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
+          test -n "$STOCKFISH_BIN"
+          ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
+          chmod +x /tmp/sf19/stockfish19
+          /tmp/sf19/stockfish19 <<'EOF'
+          uci
+          quit
+          EOF
+      - name: Generate 500 unique Stockfish-approved opening positions
+        run: |
+          python tools/generate_quality_openings.py \
+            --stockfish /tmp/sf19/stockfish19 \
+            --out artifacts/openings.jsonl \
+            --count 500 \
+            --depth 9 \
+            --multipv 4 \
+            --plies-min 8 \
+            --plies-max 16 \
+            --seed "$GITHUB_RUN_ID"
+      - name: Upload opening suite
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-quality-opening-suite-${{ github.run_id }}
+          path: artifacts/openings.jsonl
+          retention-days: 7
 
-      - name: Install build tools and chess tooling
+  collect-games:
+    needs: prepare-openings
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build and chess tools
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential cmake
-          python -m pip install --upgrade pip
-          python -m pip install python-chess numpy
-          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python tests/test_nnue_teacher_export.py
-          python -m py_compile tools/label_teacher_positions.py tools/validate_nnue_candidate.py training/train_nnue_teacher.py
-
-      - name: Build and run correctness tests
+          python -m pip install --upgrade pip python-chess
+          python -m py_compile tools/clock_match.py tools/quality_clock_match.py tools/generate_quality_openings.py
+          python tests/test_quality_openings.py
+      - name: Build and test NextGen
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
           cmake --build build --parallel 2
           ctest --test-dir build --output-on-failure
           mkdir -p bin
           cp build/chess_engine bin/chess_engine
-
       - name: Download official Stockfish 19 universal binary
         run: |
           mkdir -p /tmp/sf19
@@ -68,125 +103,221 @@ jobs:
           STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
           test -n "$STOCKFISH_BIN"
           ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
-          find /tmp/sf19 -type f -name '*.nnue' -exec cp -f {} . \;
           chmod +x /tmp/sf19/stockfish19
           /tmp/sf19/stockfish19 <<'EOF'
           uci
           quit
           EOF
-
-      - name: Play paired-color games at a genuine 10+0 time control
-        id: collect_games
+      - name: Download diverse opening suite
+        uses: actions/download-artifact@v4
+        with:
+          name: nextgen-quality-opening-suite-${{ github.run_id }}
+          path: quality-openings
+      - name: Play 50 genuine 3+0 games in paired colors
         env:
-          GAMES: ${{ inputs.games || '12' }}
+          SHARD: ${{ matrix.shard }}
         run: |
-          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
-          mkdir -p "$QUALITY_DIR"
-          python tools/clock_match.py \
-            --games "$GAMES" \
-            --tc 600+0 \
+          mkdir -p "artifacts/shard-${SHARD}"
+          python tools/quality_clock_match.py \
+            --games 50 \
+            --tc 180+0 \
             --sf-elo 0 \
-            --tag "quality-10plus0-depth20-${GITHUB_RUN_ID}" \
-            --hash-mb 256 \
-            --jsonl "$QUALITY_DIR/games.jsonl" \
-            --pgn "$QUALITY_DIR/games.pgn" \
-            --summary "$QUALITY_DIR/match_summary.json"
+            --tag "quality-3plus0-${GITHUB_RUN_ID}-shard-${SHARD}" \
+            --hash-mb 128 \
+            --openings quality-openings/openings.jsonl \
+            --opening-offset "$((SHARD * 25))" \
+            --jsonl "artifacts/shard-${SHARD}/games.jsonl" \
+            --pgn "artifacts/shard-${SHARD}/games.pgn" \
+            --summary "artifacts/shard-${SHARD}/summary.json" \
+            --max-ply 400
+      - name: Upload this shard's completed games
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextgen-quality-games-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: artifacts/shard-${{ matrix.shard }}/
+          if-no-files-found: warn
+          retention-days: 7
 
-      - name: Build depth-20/24/28 Stockfish teacher labels
-        id: label_teacher
+  train-candidate:
+    needs: collect-games
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install teacher-training tools
         run: |
-          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake
+          python -m pip install --upgrade pip python-chess numpy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m py_compile tools/label_teacher_positions.py tools/quality_clock_match.py training/train_nnue_teacher.py tools/validate_nnue_candidate.py
+          python tests/test_nnue_teacher_export.py
+          python tests/test_quality_openings.py
+      - name: Download all 20 game shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nextgen-quality-games-shard-*-${{ github.run_id }}
+          path: shards
+          merge-multiple: false
+      - name: Merge and verify all 1,000 games and color pairs
+        run: |
+          python - <<'PY'
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+          import chess.pgn
+
+          root = Path("shards")
+          jsonl_files = sorted(root.glob("**/games.jsonl"))
+          pgn_files = sorted(root.glob("**/games.pgn"))
+          if len(jsonl_files) != 20 or len(pgn_files) != 20:
+              raise SystemExit(f"Expected 20 complete shards; found jsonl={len(jsonl_files)} pgn={len(pgn_files)}")
+          records = []
+          quality = Path("datasets/quality_sf19_3plus0/run-" + __import__("os").environ["GITHUB_RUN_ID"])
+          quality.mkdir(parents=True, exist_ok=True)
+          with (quality / "games.jsonl").open("w", encoding="utf-8") as out:
+              for path in jsonl_files:
+                  for line in path.read_text(encoding="utf-8").splitlines():
+                      if line.strip():
+                          row = json.loads(line)
+                          records.append(row)
+                          out.write(json.dumps(row, ensure_ascii=False) + "\n")
+          with (quality / "games.pgn").open("w", encoding="utf-8") as out:
+              for path in pgn_files:
+                  out.write(path.read_text(encoding="utf-8"))
+                  out.write("\n")
+          if len(records) != 1000:
+              raise SystemExit(f"Expected 1,000 JSONL game records, found {len(records)}")
+          pairs = defaultdict(list)
+          for row in records:
+              if row.get("time_control") != "180+0" or row.get("stockfish") != "MAX":
+                  raise SystemExit("A game used the wrong clock or a capped Stockfish setting")
+              if row.get("experience_book_enabled", False):
+                  raise SystemExit("Experience-book data is not allowed in this training match")
+              pairs[int(row["paired_opening_id"])].append(row)
+          if len(pairs) != 500:
+              raise SystemExit(f"Expected 500 paired opening IDs, found {len(pairs)}")
+          for pair_id, rows in pairs.items():
+              if len(rows) != 2 or {bool(row["our_white"]) for row in rows} != {False, True}:
+                  raise SystemExit(f"Pair {pair_id} is incomplete or not color-reversed")
+              if len({row["opening"] for row in rows}) != 1:
+                  raise SystemExit(f"Pair {pair_id} did not reuse the same opening")
+          with (quality / "games.pgn").open("r", encoding="utf-8", errors="replace") as stream:
+              pgn_count = 0
+              while chess.pgn.read_game(stream) is not None:
+                  pgn_count += 1
+          if pgn_count != 1000:
+              raise SystemExit(f"Expected 1,000 valid PGN games, found {pgn_count}")
+          wins = sum(row["our_result"] == "win" for row in records)
+          draws = sum(row["our_result"] == "draw" for row in records)
+          losses = sum(row["our_result"] == "loss" for row in records)
+          summary = {
+              "games": len(records), "wins": wins, "draws": draws, "losses": losses,
+              "score_fraction": (wins + 0.5 * draws) / len(records),
+              "time_control": "3+0", "opponent": "Stockfish 19 MAX",
+              "paired_color_openings": 500, "pair_integrity": "PASS",
+              "shards": 20, "games_per_shard": 50,
+          }
+          (quality / "match_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(summary, indent=2))
+          PY
+      - name: Build and test NextGen for candidate smoke test
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          mkdir -p bin
+          cp build/chess_engine bin/chess_engine
+      - name: Download Stockfish 19 teacher
+        run: |
+          mkdir -p /tmp/sf19
+          curl --fail --location --retry 3 \
+            https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz \
+            --output /tmp/stockfish19.tar.gz
+          tar -xzf /tmp/stockfish19.tar.gz -C /tmp/sf19 --strip-components=1
+          STOCKFISH_BIN="$(find /tmp/sf19 -type f -name 'stockfish*' -perm /111 | head -n 1)"
+          test -n "$STOCKFISH_BIN"
+          ln -sf "$STOCKFISH_BIN" /tmp/sf19/stockfish19
+          chmod +x /tmp/sf19/stockfish19
+      - name: Build depth-20/24/28 Stockfish teacher labels
+        run: |
+          QUALITY_DIR="datasets/quality_sf19_3plus0/run-${GITHUB_RUN_ID}"
           touch "$QUALITY_DIR/missed_positions.jsonl"
           python tools/label_teacher_positions.py \
             --pgn "$QUALITY_DIR/games.pgn" \
             --missed "$QUALITY_DIR/missed_positions.jsonl" \
             --stockfish /tmp/sf19/stockfish19 \
             --out "$QUALITY_DIR/teacher_eval_positions.jsonl" \
-            --sample-every-plies 3 \
-            --max-positions 240 \
+            --sample-every-plies 8 \
+            --max-positions 3000 \
             --depth 20 \
-            --critical-count 48 \
+            --critical-count 300 \
             --critical-depth 24 \
-            --elite-count 12 \
+            --elite-count 60 \
             --elite-depth 28 \
-            --bulk-time-limit 5 \
-            --critical-time-limit 12 \
-            --elite-time-limit 25 \
-            --seed 20261031
-
-      - name: Train candidate NNUE from balanced teacher labels
-        id: train_nnue
+            --bulk-time-limit 4 \
+            --critical-time-limit 10 \
+            --elite-time-limit 20 \
+            --seed "$GITHUB_RUN_ID"
+      - name: Train an isolated candidate NNUE
         run: |
+          QUALITY_DIR="datasets/quality_sf19_3plus0/run-${GITHUB_RUN_ID}"
           python training/train_nnue_teacher.py \
-            --dataset datasets/quality_sf19_10plus0/teacher_eval_positions.jsonl \
+            --dataset "$QUALITY_DIR/teacher_eval_positions.jsonl" \
             --out /tmp/nextgen_candidate.pt \
-            --report /tmp/nextgen_candidate_training_report.json \
-            --epochs 24 \
-            --patience 5 \
+            --report "$QUALITY_DIR/training_report.json" \
+            --epochs 32 \
+            --patience 7 \
             --batch 128 \
             --threads 2 \
             --cpu
           test -s /tmp/nextgen_candidate.nnue
-          mkdir -p networks/candidates
-          cp /tmp/nextgen_candidate.nnue "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
-          cp /tmp/nextgen_candidate_training_report.json "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}-training-report.json"
-
-      - name: Smoke-test candidate network
-        id: smoke
+      - name: Smoke-test candidate NNUE loading
         run: |
           set -o pipefail
-          printf 'uci\nsetoption name NNUEFile value /tmp/nextgen_candidate.nnue\nsetoption name NNUEBlend value 30\nisready\nposition startpos\ngo depth 6\nquit\n' \
-            | ./bin/chess_engine | tee /tmp/nextgen-nnue-smoke.txt
-          grep -F 'NNUEFile loaded /tmp/nextgen_candidate.nnue' /tmp/nextgen-nnue-smoke.txt
-          grep -E '^bestmove [a-h][1-8][a-h][1-8]' /tmp/nextgen-nnue-smoke.txt
-
-      - name: Keep candidate isolated pending independent 10+0 validation
-        id: hold_candidate
+          printf 'uci\nsetoption name NNUEFile value /tmp/nextgen_candidate.nnue\nsetoption name NNUEBlend value 30\nisready\nposition startpos\ngo depth 8\nquit\n' \
+            | ./bin/chess_engine | tee /tmp/nextgen-candidate-smoke.txt
+          grep -F 'NNUEFile loaded /tmp/nextgen_candidate.nnue' /tmp/nextgen-candidate-smoke.txt
+          grep -E '^bestmove [a-h][1-8][a-h][1-8]' /tmp/nextgen-candidate-smoke.txt
+      - name: Keep candidate separate from production NNUE
         run: |
-          CANDIDATE="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
-          test -s "$CANDIDATE"
-          echo "Candidate retained separately; production networks/nnue.nnue is unchanged."
-          echo "A short movetime gate is not accepted as evidence for promotion."
-
-      - name: Summarize candidate result
+          QUALITY_DIR="datasets/quality_sf19_3plus0/run-${GITHUB_RUN_ID}"
+          mkdir -p networks/candidates
+          cp /tmp/nextgen_candidate.nnue "networks/candidates/nextgen-sf19-quality-${GITHUB_RUN_ID}.nnue"
+          cp "$QUALITY_DIR/training_report.json" "networks/candidates/nextgen-sf19-quality-${GITHUB_RUN_ID}-training-report.json"
+          echo "Candidate was trained and smoke-tested. Production networks/nnue.nnue was not changed."
+          echo "Independent paired 10+0 validation is still required before promotion."
+      - name: Persist games, labels, summary, and candidate
         if: always()
         run: |
-          if [ -s "networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue" ]; then
-            echo "## Stockfish teacher candidate: trained, not promoted" >> "$GITHUB_STEP_SUMMARY"
-            echo "Match data uses paired-color 10+0 games against uncapped Stockfish 19 MAX." >> "$GITHUB_STEP_SUMMARY"
-            echo "Teacher targets request depths 20, 24 and 28 with explicit wall-time caps; actual depths are recorded." >> "$GITHUB_STEP_SUMMARY"
-            echo "The candidate is kept separate. Production NNUE promotion requires a separate independent 10+0 validation." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "## Stockfish teacher candidate: not produced" >> "$GITHUB_STEP_SUMMARY"
-            echo "The run did not produce a candidate network. Existing production NNUE remains unchanged." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Persist quality match data, teacher labels and candidate without promotion
-        if: always() && steps.collect_games.outcome == 'success'
-        run: |
+          QUALITY_DIR="datasets/quality_sf19_3plus0/run-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          QUALITY_DIR=datasets/quality_sf19_10plus0/run-${GITHUB_RUN_ID}
           if [ -d "$QUALITY_DIR" ]; then git add "$QUALITY_DIR"; fi
-          CANDIDATE="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}.nnue"
-          REPORT="networks/candidates/nextgen-sf19-${GITHUB_RUN_ID}-training-report.json"
+          CANDIDATE="networks/candidates/nextgen-sf19-quality-${GITHUB_RUN_ID}.nnue"
+          REPORT="networks/candidates/nextgen-sf19-quality-${GITHUB_RUN_ID}-training-report.json"
           if [ -f "$REPORT" ]; then git add "$REPORT"; fi
           if [ -f "$CANDIDATE" ]; then git add -f "$CANDIDATE"; fi
-          if git diff --cached --quiet; then
-            echo "No quality data or candidate changes to commit."
-          else
-            git commit -m "train: add isolated 10+0 Stockfish teacher dataset"
+          if ! git diff --cached --quiet; then
+            git commit -m "train: add 1,000-game Stockfish 19 quality dataset"
             git push origin "HEAD:${GITHUB_REF_NAME}"
+          else
+            echo "No completed quality outputs to persist."
           fi
-
-      - name: Upload teacher data, candidate NNUE, and reports
+      - name: Upload dataset, teacher labels, reports, and candidate
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nextgen-sf19-quality-10plus0-${{ inputs.games || '12' }}-games
+          name: nextgen-sf19-quality-1000-games-${{ github.run_id }}
           if-no-files-found: warn
           retention-days: 30
           path: |
-            datasets/quality_sf19_10plus0/${{ github.run_id }}/
-            networks/candidates/nextgen-sf19-${{ github.run_id }}.nnue
-            networks/candidates/nextgen-sf19-${{ github.run_id }}-training-report.json
+            datasets/quality_sf19_3plus0/run-${{ github.run_id }}/
+            networks/candidates/nextgen-sf19-quality-${{ github.run_id }}.nnue
+            networks/candidates/nextgen-sf19-quality-${{ github.run_id }}-training-report.json
