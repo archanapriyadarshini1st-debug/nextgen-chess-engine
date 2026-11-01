@@ -1,0 +1,13 @@
+{
+  "games": 1000,
+  "wins": 0,
+  "draws": 4,
+  "losses": 996,
+  "score_fraction": 0.002,
+  "time_control": "3+0",
+  "opponent": "Stockfish 19 MAX",
+  "paired_color_openings": 500,
+  "pair_integrity": "PASS",
+  "shards": 20,
+  "games_per_shard": 50
+}

@@ -1,0 +1,25 @@
+{
+  "dataset": [
+    "datasets/quality_sf19_3plus0/run-41270279880/teacher_eval_positions.jsonl"
+  ],
+  "score_perspective": "side_to_move",
+  "feature_order": [
+    "us",
+    "them"
+  ],
+  "nnue_format_version": 2,
+  "source_weight_multipliers": {
+    "broad_teacher": 1.0,
+    "mistake_only_auxiliary": 0.15
+  },
+  "unique_positions": 3000,
+  "train_positions": 2692,
+  "validation_positions": 308,
+  "max_cp_clamp": 1200,
+  "best_epoch": 17,
+  "validation_mae_cp": 242.53,
+  "network_path": "/tmp/nextgen_candidate.nnue",
+  "feature_count": 5120,
+  "hidden_1": 256,
+  "hidden_2": 32
+}
